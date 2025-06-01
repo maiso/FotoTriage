@@ -1,36 +1,26 @@
 package com.maiso.fototriage
 
-import android.app.Application
-import android.content.ContentUris
-import android.content.Context
 import android.net.Uri
-import android.provider.MediaStore
-import android.provider.MediaStore.Images
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import android.util.Log
-import coil3.SingletonImageLoader
-import coil3.request.ImageRequest
-import kotlinx.coroutines.Dispatchers
-import java.time.LocalDate
-import java.time.ZoneId
-import java.util.Date
+import java.time.Month
+import java.time.Year
 
 data class PhotoTriageUiState(
     val photo: Uri? = null,
 )
 
-class PhotoTriageViewModel : ViewModel() {
+class PhotoTriageViewModel(
+    year: Year,
+    month: Month,
+    private val onLastPhotoReached: () -> Unit,
+) : ViewModel() {
 
     private var photoNumber: Int = 0
-    private var photos: List<Photo> = FotoDatabase.photos
+    private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month)
 
     val uiState = MutableStateFlow(PhotoTriageUiState())
 
@@ -40,10 +30,15 @@ class PhotoTriageViewModel : ViewModel() {
     }
 
     fun onNextPhoto() {
-        photoNumber = (photoNumber + 1).coerceIn(photos.indices)
+        if (photoNumber + 1 > photos.size) {
+            onLastPhotoReached()
+        } else {
+            photoNumber = (photoNumber + 1).coerceIn(photos.indices)
 
-        Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
-        uiState.update { it.copy(photo = photos[photoNumber].uri) }
+            Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
+
+            uiState.update { it.copy(photo = photos[photoNumber].uri) }
+        }
     }
 
     fun onPreviousPhoto() {
@@ -53,9 +48,17 @@ class PhotoTriageViewModel : ViewModel() {
     }
 
     companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                PhotoTriageViewModel()
+        class PhotoTriageViewModelFactory(
+            private val year: Year,
+            private val month: Month,
+            private val onLastPhotoReached: () -> Unit
+        ) : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(PhotoTriageViewModel::class.java)) {
+                    @Suppress("UNCHECKED_CAST")
+                    return PhotoTriageViewModel(year, month, onLastPhotoReached) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
             }
         }
     }

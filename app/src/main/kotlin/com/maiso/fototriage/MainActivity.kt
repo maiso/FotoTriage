@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,20 +17,40 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.entry
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Month
+import java.time.Year
 import java.util.Calendar
 
+sealed interface Dest {
+    data object LoadingScreen
+
+    data object OverviewScreen
+
+    data class PhotoTriageScreen(
+        val year: Year,
+        val month: Month
+    )
+
+    data object TriageFinished
+
+}
+
 class MainActivity : ComponentActivity() {
-    private lateinit var navController: NavHostController
+
+    private lateinit var backStack: SnapshotStateList<Any>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -42,72 +61,73 @@ class MainActivity : ComponentActivity() {
             application.applicationContext
         ) {
             withContext(Dispatchers.Main) {
-                navController.navigate("OverViewScreen")
+                backStack.add(Dest.OverviewScreen)
+                backStack.remove(Dest.LoadingScreen)
+
             }
         }
         setContent {
-            navController = rememberNavController()
+            backStack = remember { mutableStateListOf(Dest.LoadingScreen) }
 
             FotoTriageTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    NavHost(navController = navController, startDestination = "LoadingScreen") {
-                    composable("LoadingScreen") {
-                        val loadingScreenViewModel: LoadingScreenViewModel =
-                            viewModel(factory = LoadingScreenViewModel.Factory)
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = { backStack.removeLastOrNull() },
+                        entryProvider = entryProvider {
+                            entry<Dest.LoadingScreen> { _ ->
+                                val loadingScreenViewModel: LoadingScreenViewModel =
+                                    viewModel(factory = LoadingScreenViewModel.Factory)
 
-                        val uiState by loadingScreenViewModel.uiState.collectAsState()
+                                val uiState by loadingScreenViewModel.uiState.collectAsState()
 
-                        LoadingScreen(uiState)
-                    }
-                    composable("OverViewScreen") {
-                        val overviewScreenViewModel: OverviewScreenViewModel =
-                            viewModel(factory = OverviewScreenViewModel.Factory)
-
-                        val uiState by overviewScreenViewModel.uiState.collectAsState()
-
-                        OverviewScreen(
-                            uiState,
-                            modifier = Modifier.padding(padding),
-                            onClick = {
-                                navController.navigate("FotoTriage")
+                                LoadingScreen(uiState, modifier = Modifier.fillMaxSize())
                             }
-                        )
-                    }
-                    composable("FotoTriage") {
-                        val photoTriageViewModel: PhotoTriageViewModel =
-                            viewModel(factory = PhotoTriageViewModel.Factory)
+                            entry<Dest.OverviewScreen> { _ ->
+                                val overviewScreenViewModel: OverviewScreenViewModel =
+                                    viewModel(factory = OverviewScreenViewModel.Factory)
 
-                        val uiState by photoTriageViewModel.uiState.collectAsState()
+                                val uiState by overviewScreenViewModel.uiState.collectAsState()
 
-                        PhotoTriage(
-                            uiState,
-                            onPreviousPhoto = photoTriageViewModel::onPreviousPhoto,
-                            onNextPhoto = photoTriageViewModel::onNextPhoto,
-                            modifier = Modifier.padding(padding),
-                        )
-                    }
+                                OverviewScreen(
+                                    uiState,
+                                    modifier = Modifier.padding(padding),
+                                    onClick = { year, month ->
+                                        backStack.add(
+                                            Dest.PhotoTriageScreen(
+                                                year, month
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                            entry<Dest.PhotoTriageScreen> { key ->
+                                val factory =
+                                    PhotoTriageViewModel.Companion.PhotoTriageViewModelFactory(
+                                        key.year,
+                                        key.month,
+                                        {
+                                            backStack.add(Dest.TriageFinished)
+                                        }
+                                    )
+                                val photoTriageViewModel: PhotoTriageViewModel =
+                                    viewModel(factory = factory)
 
+                                val uiState by photoTriageViewModel.uiState.collectAsState()
 
+                                PhotoTriage(
+                                    uiState,
+                                    onPreviousPhoto = photoTriageViewModel::onPreviousPhoto,
+                                    onNextPhoto = photoTriageViewModel::onNextPhoto,
+                                    modifier = Modifier.padding(padding),
+                                )
+                            }
+                            entry<Dest.TriageFinished> { _ ->
+                                TriageFinished()
+                            }
+                        }
+                    )
                 }
-
-                }
-            }
-        }
-
-        // Handle back button press
-        onBackPressedDispatcher.addCallback(this) {
-
-            Log.i(
-                "MVDB",
-                "${navController.currentDestination?.route}"
-            )
-            // Check if the current destination is Screen2
-            if (navController.currentDestination?.route == "FotoTriage") {
-                // If on Screen2, finish the activity to exit the app
-                finish()
-            } else {
-                // Otherwise, use the default back button behavior
-                navController.popBackStack()
             }
         }
     }

@@ -50,7 +50,10 @@ object FotoDatabase {
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
-    fun getAllPhotos(context: Context, function: suspend () -> Unit) {
+    fun getAllPhotos(context: Context, onFinished: suspend () -> Unit) {
+
+        _photos.clear()
+
         coroutineScope.launch {
             val projection = arrayOf(
                 Images.Media._ID,
@@ -85,7 +88,7 @@ object FotoDatabase {
 
             Log.i(
                 "MVDB",
-                "Getting a foto's between ${startMillis.toString()} and ${endMillis.toString()}"
+                "Getting a foto's between $startMillis and $endMillis"
             )
             context.contentResolver.query(
                 Images.Media.EXTERNAL_CONTENT_URI, projection,//            columns,
@@ -126,7 +129,7 @@ object FotoDatabase {
             }
             Log.i("MVDB", "Got ${_photos.size} photos")
 
-            function()
+            onFinished()
 //        preCacheImages(galleryImageUrls)
         }
     }
