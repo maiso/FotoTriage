@@ -25,7 +25,7 @@ fun LoadingScreen(
     ) {
         CircularProgressIndicator(
             color = MaterialTheme.colorScheme.onBackground
-        ) // Show loading spinner
+        )
         Text("Loading...",
             color = MaterialTheme.colorScheme.onBackground) // Show loading text
         Text("${uiState.progressPercentage}%",

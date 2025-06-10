@@ -11,6 +11,9 @@ import java.time.Year
 
 data class PhotoTriageUiState(
     val photo: Uri? = null,
+    val fileName: String? = null,
+    val triaged: Boolean = false,
+    val favorite: Boolean = false,
 )
 
 class PhotoTriageViewModel(
@@ -26,7 +29,7 @@ class PhotoTriageViewModel(
 
     init {
         Log.i("MVDB", "FotoDatabase: ${FotoDatabase.photos.size}")
-        uiState.update { it.copy(photo = photos[0].uri) }
+        updateFoto()
     }
 
     fun onNextPhoto() {
@@ -37,16 +40,26 @@ class PhotoTriageViewModel(
 
             Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
 
-            uiState.update { it.copy(photo = photos[photoNumber].uri) }
+            updateFoto()
         }
     }
 
     fun onPreviousPhoto() {
         photoNumber = (photoNumber - 1).coerceIn(photos.indices)
         Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
-        uiState.update { it.copy(photo = photos[photoNumber].uri) }
+        updateFoto()
     }
 
+    private fun updateFoto() {
+        uiState.update {
+            val photo = photos[photoNumber]
+            it.copy(
+                photo = photo.uri,
+                fileName = photo.fileName,
+                triaged = photo.triaged
+            )
+        }
+    }
     companion object {
         class PhotoTriageViewModelFactory(
             private val year: Year,

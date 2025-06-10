@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Favorite
@@ -49,13 +52,37 @@ fun PhotoTriage(
     Column(
         modifier = modifier.fillMaxHeight(),
     ) {
-        Text(
-            text = "Fotos op het apparaat:",
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Foto: ${uiState.fileName}",
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (uiState.triaged) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp) // Size of the badge
+                        .background(
+                            Color(0xFFB2FF59),
+                            shape = RoundedCornerShape(16.dp)
+                        ) // Light green background with rounded corners
+                        .padding(4.dp), // Padding around the checkbox
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "Checked",
+                        tint = Color.Green, // Set the color of the checkbox to green
+                        modifier = Modifier.size(16.dp) // Size of the checkbox icon
+                    )
+                }
+            }
+        }
 
         Box(
-            modifier = Modifier.weight(1.0f)
+            modifier = Modifier.weight(1.0f),
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -100,7 +127,11 @@ fun PhotoTriage(
                 icon = Icons.Outlined.Favorite,
                 onClick = { /* Handle favorite click */ })
             RoundIconButton(icon = Icons.Filled.Refresh, onClick = { /* Handle rotate click */ })
-            RoundIconButton(icon = Icons.Filled.Refresh, onClick = { /* Handle mirrored rotate click */ }, isMirrored = true)
+            RoundIconButton(
+                icon = Icons.Filled.Refresh,
+                onClick = { /* Handle mirrored rotate click */ },
+                isMirrored = true
+            )
             RoundIconButton(icon = Icons.Filled.Delete, onClick = { /* Handle delete click */ })
         }
     }
@@ -119,7 +150,7 @@ fun RoundIconButton(icon: ImageVector, onClick: () -> Unit, isMirrored: Boolean 
             imageVector = icon,
             contentDescription = null, // Provide a description for accessibility
             tint = Color.White, // Icon color
-                modifier = if (isMirrored) {
+            modifier = if (isMirrored) {
                 Modifier.graphicsLayer(scaleX = -1f) // Mirror the icon
             } else {
                 Modifier

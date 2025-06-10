@@ -7,19 +7,28 @@ import android.provider.MediaStore.Images
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.time.Month
 import java.time.Year
-import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 data class Photo(
-    val uri: Uri, val dateTaken: Date
+    val uri: Uri,
+    val fileName: String,
+    val filePath: String,
+    val dateTaken: Date,
+    val dateTakenMillis: Long,
+    val hash: String,
+    val triaged: Boolean,
 )
 
 fun List<Photo>.filterByYear(year: Year): List<Photo> = this.filter { photo ->
@@ -27,9 +36,7 @@ fun List<Photo>.filterByYear(year: Year): List<Photo> = this.filter { photo ->
     calendar.get(Calendar.YEAR) == year.value
 }
 
-
-fun List<Photo>.filterByMonth(year: Year, month: Month): List<Photo> = this.filter {
-    photo ->
+fun List<Photo>.filterByMonth(year: Year, month: Month): List<Photo> = this.filter { photo ->
     val calendar = Calendar.getInstance().apply { time = photo.dateTaken }
     calendar.get(Calendar.YEAR) == year.value &&
             (calendar.get(Calendar.MONTH) + 1) == month.value // Month is 0-based
@@ -42,8 +49,11 @@ fun List<Photo>.findUniqueYears(): Set<Year> {
     }.distinct().toSet() // Convert to Set to ensure uniqueness
 }
 
+
 object FotoDatabase {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
+    private lateinit var databaseHelper: DatabaseHelper
 
     private val _photos: MutableList<Photo> = mutableListOf()
     val photos: List<Photo> = _photos
@@ -51,6 +61,8 @@ object FotoDatabase {
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
     fun getAllPhotos(context: Context, onFinished: suspend () -> Unit) {
+
+        databaseHelper = DatabaseHelper(context)
 
         _photos.clear()
 
@@ -63,36 +75,17 @@ object FotoDatabase {
             )
 
             val orderBy = Images.Media.DATE_TAKEN
-//        val selection = "${Images.Media.DATA} LIKE ?"
-//        val selectionArgs = arrayOf("%/DCIM/Camera/%") // Filter for images in the Camera folder
-
-            // Get the first day of the previous month and the current date
-            val firstDayOfPreviousMonth = LocalDate.now().minusMonths(1).withDayOfMonth(1)
-            val currentDate = LocalDate.now()
-
-//        // Convert LocalDate to milliseconds
-            val startMillis =
-                Date.from(
-                    firstDayOfPreviousMonth.atStartOfDay(ZoneId.systemDefault()).toInstant()
-                ).time
-            val endMillis =
-                Date.from(currentDate.atStartOfDay(ZoneId.systemDefault()).toInstant()).time
-
 
             // Define the selection criteria
-            val selection =
-                "${Images.Media.DATA} LIKE ?"// ${Images.Media.DATE_TAKEN} >= ? AND ${Images.Media.DATE_TAKEN} <= ?"
-//        val selectionArgs = arrayOf("%/DCIM/Camera/%", firstDayOfPreviousMonth, currentDate)
-            val selectionArgs =
-                arrayOf("%/DCIM/Camera/%")//, startMillis.toString(), endMillis.toString())
+            val selection = "${Images.Media.DATA} LIKE ?"
+            val selectionArgs = arrayOf("%/DCIM/Camera/%")
 
-            Log.i(
-                "MVDB",
-                "Getting a foto's between $startMillis and $endMillis"
-            )
             context.contentResolver.query(
-                Images.Media.EXTERNAL_CONTENT_URI, projection,//            columns,
-                selection, selectionArgs, "$orderBy DESC"
+                Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "$orderBy DESC"
             )?.use { cursor ->
                 val idColumn = cursor.getColumnIndexOrThrow(Images.Media._ID)
                 val nameColumn = cursor.getColumnIndexOrThrow(Images.Media.DISPLAY_NAME)
@@ -103,28 +96,49 @@ object FotoDatabase {
                 var currentCount = 0
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
+                    val uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id)
 
                     val dateTakenMillis = cursor.getLong(dateTakenColumn)
                     val dateTaken = Date(dateTakenMillis)
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
                     val formattedDate = dateFormat.format(dateTaken)
 
+                    val filePath = cursor.getString(dataColumn)
+                    val fileName = cursor.getString(nameColumn)
+
                     Log.i(
                         "MVDB",
-                        "Photo $id ${cursor.getString(nameColumn)} ${cursor.getString(dataColumn)}  ${
-                            cursor.getString(dateTakenColumn)
-                        } $formattedDate"
+                        "Photo ID:$id " +
+                                "URI: $uri" +
+                                "NAME:${fileName} " +
+                                "PATH:${filePath}  " +
+                                "DATETAKEN:${cursor.getString(dateTakenColumn)} " +
+                                "FORMATTED:$formattedDate"
                     )
+
                     currentCount++
                     val percentage = ((currentCount * 100) / totalCount)
                     progress.value = Triple(currentCount, totalCount, percentage)
-                    Log.i("MVDB", "Progress $currentCount $totalCount $percentage")
+//                    Log.i("MVDB", "Progress $currentCount $totalCount $percentage")
+
+                    val hash = ""//hashFile(cursor.getString(dataColumn))
+//                    Log.i("MVDB", "File hash: $hash")
+                    val triaged = false//databaseHelper.isFileExists(fileName, hash)
+//                    Log.i("MVDB", "File in database: $triaged")
+
                     _photos.add(
                         Photo(
-                            uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id),
-                            dateTaken = dateTaken
+                            uri = uri,
+                            filePath = filePath,
+                            fileName = fileName,
+                            dateTaken = dateTaken,
+                            dateTakenMillis = dateTakenMillis,
+                            hash = hash,
+                            triaged = triaged
                         )
                     )
+
+                    //TODO Check for any files in database but not on device.
                 }
             }
             Log.i("MVDB", "Got ${_photos.size} photos")
@@ -134,6 +148,36 @@ object FotoDatabase {
         }
     }
 
+    fun markFotoTriaged(foto: Photo) {
+        databaseHelper.insertData(
+            FotoDataBaseEntry(
+                fileName = foto.fileName,
+                dateTakenMillis = foto.dateTakenMillis,
+                hash = foto.hash,
+                favorite = false,
+            )
+        )
+    }
+
+    private fun hashFile(filePath: String): String {
+        val file = File(filePath)
+
+        val digest = MessageDigest.getInstance("MD5")
+        val fileBytes = file.readBytes()
+        val hashBytes = digest.digest(fileBytes)
+        return hashBytes.joinToString("") { String.format("%02x", it) }
+    }
+
+
+    suspend fun hashFilesInParallel(files: List<String>): List<String> {
+        return withContext(Dispatchers.IO) {
+            files.map { file ->
+                async {
+                    hashFile(file)
+                }
+            }.awaitAll() // Wait for all results
+        }
+    }
 //    private fun preCacheImages(photos: List<Uri>) {
 //
 //        coroutineScope.launch {
