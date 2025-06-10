@@ -1,19 +1,14 @@
 package com.maiso.fototriage
 
-import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import java.time.Month
 import java.time.Year
 
 data class PhotoTriageUiState(
-    val photo: Uri? = null,
-    val fileName: String? = null,
-    val triaged: Boolean = false,
-    val favorite: Boolean = false,
+    val photos: List<Photo> = emptyList(),
 )
 
 class PhotoTriageViewModel(
@@ -25,48 +20,28 @@ class PhotoTriageViewModel(
     private var photoNumber: Int = 0
     private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month)
 
-    val uiState = MutableStateFlow(PhotoTriageUiState())
+    val uiState = MutableStateFlow(
+        PhotoTriageUiState(
+            photos = photos
+        )
+    )
 
     init {
         Log.i("MVDB", "FotoDatabase: ${FotoDatabase.photos.size}")
-        updateFoto()
     }
 
-    fun onNextPhoto() {
-        if (photoNumber + 1 > photos.size) {
-            onLastPhotoReached()
-        } else {
-            FotoDatabase.markFotoTriaged(photos[photoNumber])
-
-            photoNumber = (photoNumber + 1).coerceIn(photos.indices)
-
-            Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
-
-            updateFoto()
-        }
-    }
-
-    fun onPreviousPhoto() {
-        photoNumber = (photoNumber - 1).coerceIn(photos.indices)
-        Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
-        updateFoto()
-    }
-
-    private fun updateFoto() {
-        uiState.update {
-            val photo = photos[photoNumber]
-            it.copy(
-                photo = photo.uri,
-                fileName = photo.fileName,
-                triaged = photo.triaged
-            )
-        }
-    }
-
-    fun onDeletePhoto() {
+    fun onDeletePhoto(photo: Photo) {
         Log.i("MVDB", "Delete photo $photoNumber")
-        onNextPhoto()
     }
+
+    fun onTriagedPhoto(photo: Photo) {
+        Log.i("MVDB", "Delete photo $photoNumber")
+    }
+
+    fun onFavoritePhoto(photo: Photo) {
+        Log.i("MVDB", "Delete photo $photoNumber")
+    }
+
 
     companion object {
         class PhotoTriageViewModelFactory(

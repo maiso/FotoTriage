@@ -18,7 +18,8 @@ data class MonthUiState(
     val year: Year,
     val month: Month,
     val nrOfPhoto: Int,
-    val percentageTriaged: Int,
+    val nrOfTriaged: Int,
+    val nrOfFavorites: Int
 )
 
 class OverviewScreenViewModel : ViewModel() {
@@ -47,10 +48,6 @@ class OverviewScreenViewModel : ViewModel() {
                 val fotosTriaged = photosPerMonth.count { it.triaged }
                 val nrOfPhotosPerMonth = photosPerMonth.size
 
-                val percentageTriaged = if (nrOfPhotosPerMonth > 0) {
-                    fotosTriaged / nrOfPhotosPerMonth * 100
-                } else 0
-
                 uiState.update {
                     it.copy(
                         monthPhotos = it.monthPhotos.toMutableList().apply {
@@ -59,7 +56,8 @@ class OverviewScreenViewModel : ViewModel() {
                                     year,
                                     month,
                                     nrOfPhotosPerMonth,
-                                    percentageTriaged,
+                                    fotosTriaged,
+                                    0,
                                 )
                             )
                         }

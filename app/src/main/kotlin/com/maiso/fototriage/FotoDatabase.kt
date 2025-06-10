@@ -23,6 +23,7 @@ data class Photo(
     val dateTaken: Date,
     val dateTakenMillis: Long,
     val triaged: Boolean,
+    val favorite: Boolean,
 )
 
 fun List<Photo>.filterByYear(year: Year): List<Photo> = this.filter { photo ->
@@ -121,7 +122,8 @@ object FotoDatabase {
                             fileName = fileName,
                             dateTaken = dateTaken,
                             dateTakenMillis = dateTakenMillis,
-                            triaged = triaged
+                            triaged = triaged,
+                            favorite = false
                         )
                     )
 

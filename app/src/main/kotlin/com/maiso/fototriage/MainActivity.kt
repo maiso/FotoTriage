@@ -116,8 +116,8 @@ class MainActivity : ComponentActivity() {
 
                                 PhotoTriage(
                                     uiState,
-                                    onPreviousPhoto = photoTriageViewModel::onPreviousPhoto,
-                                    onNextPhoto = photoTriageViewModel::onNextPhoto,
+                                    onTraigedPhoto = photoTriageViewModel::onTriagedPhoto,
+                                    onFavoritePhoto = photoTriageViewModel::onFavoritePhoto,
                                     onDeletePhoto = photoTriageViewModel::onDeletePhoto,
                                     modifier = Modifier.padding(padding),
                                 )
