@@ -49,7 +49,7 @@ fun OverviewScreen(
                         MonthRow(
                             month.month.toDutchString(),
                             month.nrOfPhoto,
-                            month.loading,
+                            month.percentageTriaged,
                         ) { onClick(year.first, month.month) }
                     }
                 }
@@ -68,18 +68,18 @@ fun OverviewPanelPreview() {
             OverviewScreenUiState(
                 yearPhotos = listOf(Year.of(2025) to 123, Year.of(2024) to 456),
                 monthPhotos = listOf(
-                    MonthUiState(Year.of(2025), Month.JANUARY, 123, true),
-                    MonthUiState(Year.of(2025), Month.FEBRUARY, 123, true),
-                    MonthUiState(Year.of(2025), Month.MARCH, 123),
-                    MonthUiState(Year.of(2025), Month.APRIL, 123),
-                    MonthUiState(Year.of(2025), Month.MAY, 123),
-                    MonthUiState(Year.of(2025), Month.JUNE, 123),
-                    MonthUiState(Year.of(2024), Month.JANUARY, 456),
-                    MonthUiState(Year.of(2024), Month.FEBRUARY, 123),
-                    MonthUiState(Year.of(2024), Month.MARCH, 123),
-                    MonthUiState(Year.of(2024), Month.APRIL, 123),
-                    MonthUiState(Year.of(2024), Month.MAY, 123),
-                    MonthUiState(Year.of(2024), Month.JUNE, 123),
+                    MonthUiState(Year.of(2025), Month.JANUARY, 123, 100),
+                    MonthUiState(Year.of(2025), Month.FEBRUARY, 123, 90),
+                    MonthUiState(Year.of(2025), Month.MARCH, 123, 80),
+                    MonthUiState(Year.of(2025), Month.APRIL, 123, 70),
+                    MonthUiState(Year.of(2025), Month.MAY, 123, 60),
+                    MonthUiState(Year.of(2025), Month.JUNE, 123, 50),
+                    MonthUiState(Year.of(2024), Month.JANUARY, 456, 40),
+                    MonthUiState(Year.of(2024), Month.FEBRUARY, 123, 30),
+                    MonthUiState(Year.of(2024), Month.MARCH, 123, 20),
+                    MonthUiState(Year.of(2024), Month.APRIL, 123, 10),
+                    MonthUiState(Year.of(2024), Month.MAY, 123, 0),
+                    MonthUiState(Year.of(2024), Month.JUNE, 123, 0),
                 ),
             ),
             onClick = { _, _ -> }

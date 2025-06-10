@@ -2,7 +2,6 @@ package com.maiso.fototriage
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,6 +47,7 @@ fun PhotoTriage(
     uiState: PhotoTriageUiState,
     onPreviousPhoto: () -> Unit,
     onNextPhoto: () -> Unit,
+    onDeletePhoto: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -90,7 +92,6 @@ fun PhotoTriage(
                     .build(),
                 contentDescription = null,
                 modifier = Modifier
-                    .border(1.dp, Color.Red)
                     .fillMaxSize(),
             )
 
@@ -100,18 +101,98 @@ fun PhotoTriage(
                         .fillMaxHeight()
                         .width(100.dp) // Set a width for the button container
                         .clickable { onPreviousPhoto() }
-                        .border(1.dp, Color.Blue)
                 ) {
-
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.alpha(0.5f)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.weight(1.0f))
-                Box(
+
+                Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(100.dp) // Set a width for the button container
-                        .clickable { onNextPhoto() }
-                        .border(1.dp, Color.Blue)
+                        .width(100.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    LongPressButton(
+                        onLongPress = onDeletePhoto,
+                        modifier = Modifier
+                            .weight(1f)
+                            .width(100.dp)
+                            .background(
+                                MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                                shape = CircleShape
+                            ),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.error,
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onError
+                            )
+                        }
+                    }
+                    Spacer(Modifier.size(100.dp))
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .width(100.dp)
+                            .clickable { onNextPhoto() }
+                            .background(Color.Magenta.copy(alpha = 0.4f), shape = CircleShape),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Color.Magenta, shape = CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Favorite,
+                                contentDescription = null,
+                                tint = Color.Red,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.size(100.dp))
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .width(100.dp)
+                            .clickable { onNextPhoto() }
+                            .background(Color.Green.copy(alpha = 0.4f), shape = CircleShape),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Color.Green, shape = CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = Color.Black,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -123,16 +204,15 @@ fun PhotoTriage(
                 .wrapContentHeight()
                 .fillMaxWidth()
         ) {
+            RoundIconButton(icon = Icons.Filled.Refresh, onClick = { /* Handle rotate click */ })
             RoundIconButton(
                 icon = Icons.Outlined.Favorite,
                 onClick = { /* Handle favorite click */ })
-            RoundIconButton(icon = Icons.Filled.Refresh, onClick = { /* Handle rotate click */ })
             RoundIconButton(
                 icon = Icons.Filled.Refresh,
                 onClick = { /* Handle mirrored rotate click */ },
                 isMirrored = true
             )
-            RoundIconButton(icon = Icons.Filled.Delete, onClick = { /* Handle delete click */ })
         }
     }
 }
@@ -165,6 +245,6 @@ fun RoundIconButton(icon: ImageVector, onClick: () -> Unit, isMirrored: Boolean 
 @Composable
 fun PhotoTriagePreview() {
     FotoTriageTheme {
-        PhotoTriage(PhotoTriageUiState(), {}, {})
+        PhotoTriage(PhotoTriageUiState(), {}, {}, {})
     }
 }

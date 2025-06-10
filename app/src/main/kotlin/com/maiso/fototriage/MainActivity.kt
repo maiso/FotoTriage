@@ -105,11 +105,10 @@ class MainActivity : ComponentActivity() {
                                 val factory =
                                     PhotoTriageViewModel.Companion.PhotoTriageViewModelFactory(
                                         key.year,
-                                        key.month,
-                                        {
-                                            backStack.add(Dest.TriageFinished)
-                                        }
-                                    )
+                                        key.month
+                                    ) {
+                                        backStack.add(Dest.TriageFinished)
+                                    }
                                 val photoTriageViewModel: PhotoTriageViewModel =
                                     viewModel(factory = factory)
 
@@ -119,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                     uiState,
                                     onPreviousPhoto = photoTriageViewModel::onPreviousPhoto,
                                     onNextPhoto = photoTriageViewModel::onNextPhoto,
+                                    onDeletePhoto = photoTriageViewModel::onDeletePhoto,
                                     modifier = Modifier.padding(padding),
                                 )
                             }

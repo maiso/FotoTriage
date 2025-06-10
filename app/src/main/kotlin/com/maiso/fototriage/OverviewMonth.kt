@@ -4,8 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,11 +15,11 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
-fun MonthRow(month: String, nrOfFotos: Int, loading: Boolean, onClick: () -> Unit) {
+fun MonthRow(month: String, nrOfFotos: Int, percentageTriaged: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .padding(vertical = 15.dp)
-            .clickable(enabled = !loading) {
+            .clickable {
                 onClick()
             },
     ) {
@@ -33,17 +31,11 @@ fun MonthRow(month: String, nrOfFotos: Int, loading: Boolean, onClick: () -> Uni
         )
         Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = "$nrOfFotos fotos",
+            text = "$nrOfFotos fotos ($percentageTriaged%)",
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onBackground
         )
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(25.dp),
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
     }
 }
 

@@ -36,6 +36,8 @@ class PhotoTriageViewModel(
         if (photoNumber + 1 > photos.size) {
             onLastPhotoReached()
         } else {
+            FotoDatabase.markFotoTriaged(photos[photoNumber])
+
             photoNumber = (photoNumber + 1).coerceIn(photos.indices)
 
             Log.i("MVDB", "Select photo $photoNumber/${photos.size}")
@@ -60,6 +62,12 @@ class PhotoTriageViewModel(
             )
         }
     }
+
+    fun onDeletePhoto() {
+        Log.i("MVDB", "Delete photo $photoNumber")
+        onNextPhoto()
+    }
+
     companion object {
         class PhotoTriageViewModelFactory(
             private val year: Year,

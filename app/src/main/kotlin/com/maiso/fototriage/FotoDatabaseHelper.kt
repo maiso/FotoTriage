@@ -16,7 +16,6 @@ class DatabaseHelper(context: Context) :
         private const val COLUMN_ID = "id"
         private const val COLUMN_FILENAME = "filename"
         private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
-        private const val COLUMN_HASH = "hash"
         private const val COLUMN_FAVORITE = "favorite"
     }
 
@@ -25,7 +24,6 @@ class DatabaseHelper(context: Context) :
                 + "$COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + "$COLUMN_FILENAME TEXT, "
                 + "$COLUMN_DATA_TAKEN_MILLIS INTEGER, "
-                + "$COLUMN_HASH TEXT, "
                 + "$COLUMN_FAVORITE INTEGER)") // Store favorite as INTEGER (0 or 1)
         db.execSQL(createTable)
     }
@@ -40,7 +38,6 @@ class DatabaseHelper(context: Context) :
         val values = ContentValues().apply {
             put(COLUMN_FILENAME, data.fileName)
             put(COLUMN_DATA_TAKEN_MILLIS, data.dateTakenMillis)
-            put(COLUMN_HASH, data.hash)
             put(COLUMN_FAVORITE, if (data.favorite) 1 else 0) // Store boolean as INTEGER
         }
         db.insert(TABLE_NAME, null, values)
@@ -58,10 +55,9 @@ class DatabaseHelper(context: Context) :
                 val filename = cursor.getString(cursor.getColumnIndex(COLUMN_FILENAME))
                 val dataTakenMillis =
                     cursor.getLong(cursor.getColumnIndex(COLUMN_DATA_TAKEN_MILLIS))
-                val hash = cursor.getString(cursor.getColumnIndex(COLUMN_HASH))
                 val favorite = cursor.getInt(cursor.getColumnIndex(COLUMN_FAVORITE)) == 1
 
-                dataList.add(FotoDataBaseEntry(filename, dataTakenMillis, hash, favorite))
+                dataList.add(FotoDataBaseEntry(filename, dataTakenMillis, favorite))
             } while (cursor.moveToNext())
         }
         cursor.close()
@@ -69,10 +65,10 @@ class DatabaseHelper(context: Context) :
         return dataList
     }
 
-    fun isFileExists(filename: String, hash: String): Boolean {
+    fun isFileExists(filename: String): Boolean {
         val db = this.readableDatabase
-        val query = "SELECT * FROM $TABLE_NAME WHERE $COLUMN_HASH = ? AND $COLUMN_FILENAME LIKE ?"
-        val cursor = db.rawQuery(query, arrayOf(hash, "%$filename%"))
+        val query = "SELECT * FROM $TABLE_NAME WHERE $COLUMN_FILENAME LIKE ?"
+        val cursor = db.rawQuery(query, arrayOf("%$filename%"))
 
         val exists = cursor.count > 0
         cursor.close()
@@ -81,22 +77,22 @@ class DatabaseHelper(context: Context) :
     }
 
     @SuppressLint("Range")
-    fun checkHashesInDatabase(hashes: List<String>): Pair<List<String>, List<String>> {
+    fun checkFilenameInDatabase(fileNames: List<String>): Pair<List<String>, List<String>> {
         val db = this.readableDatabase
         val notInDatabase = mutableListOf<String>()
         val inDatabaseButNotInList = mutableListOf<String>()
 
         // Query to get all hashes from the database
-        val cursor = db.rawQuery("SELECT $COLUMN_HASH FROM $TABLE_NAME", null)
+        val cursor = db.rawQuery("SELECT $COLUMN_FILENAME FROM $TABLE_NAME", null)
 
         // Create a set of hashes from the provided list for quick lookup
-        val hashSet = hashes.toSet()
+        val fileNameSet = fileNames.toSet()
 
         // Check each hash in the database
         if (cursor.moveToFirst()) {
             do {
-                val dbHash = cursor.getString(cursor.getColumnIndex(COLUMN_HASH))
-                if (dbHash !in hashSet) {
+                val dbHash = cursor.getString(cursor.getColumnIndex(COLUMN_FILENAME))
+                if (dbHash !in fileNameSet) {
                     // If the hash is in the database but not in the provided list
                     inDatabaseButNotInList.add(dbHash)
                 }
@@ -106,9 +102,9 @@ class DatabaseHelper(context: Context) :
         db.close()
 
         // Check which hashes from the provided list are not in the database
-        for (hash in hashes) {
-            if (!inDatabaseButNotInList.contains(hash)) {
-                notInDatabase.add(hash)
+        for (fileName in fileNames) {
+            if (!inDatabaseButNotInList.contains(fileName)) {
+                notInDatabase.add(fileName)
             }
         }
 
@@ -120,6 +116,5 @@ class DatabaseHelper(context: Context) :
 data class FotoDataBaseEntry(
     val fileName: String,
     val dateTakenMillis: Long,
-    val hash: String,
     val favorite: Boolean,
 )

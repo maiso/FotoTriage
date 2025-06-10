@@ -7,13 +7,8 @@ import android.provider.MediaStore.Images
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.time.Month
 import java.time.Year
@@ -27,7 +22,6 @@ data class Photo(
     val filePath: String,
     val dateTaken: Date,
     val dateTakenMillis: Long,
-    val hash: String,
     val triaged: Boolean,
 )
 
@@ -116,15 +110,9 @@ object FotoDatabase {
                                 "FORMATTED:$formattedDate"
                     )
 
-                    currentCount++
-                    val percentage = ((currentCount * 100) / totalCount)
-                    progress.value = Triple(currentCount, totalCount, percentage)
-//                    Log.i("MVDB", "Progress $currentCount $totalCount $percentage")
 
-                    val hash = ""//hashFile(cursor.getString(dataColumn))
-//                    Log.i("MVDB", "File hash: $hash")
-                    val triaged = false//databaseHelper.isFileExists(fileName, hash)
-//                    Log.i("MVDB", "File in database: $triaged")
+                    val triaged = databaseHelper.isFileExists(fileName)
+                    Log.i("MVDB", "File in database: $triaged")
 
                     _photos.add(
                         Photo(
@@ -133,10 +121,13 @@ object FotoDatabase {
                             fileName = fileName,
                             dateTaken = dateTaken,
                             dateTakenMillis = dateTakenMillis,
-                            hash = hash,
                             triaged = triaged
                         )
                     )
+
+                    currentCount++
+                    val percentage = ((currentCount * 100) / totalCount)
+                    progress.value = Triple(currentCount, totalCount, percentage)
 
                     //TODO Check for any files in database but not on device.
                 }
@@ -153,31 +144,11 @@ object FotoDatabase {
             FotoDataBaseEntry(
                 fileName = foto.fileName,
                 dateTakenMillis = foto.dateTakenMillis,
-                hash = foto.hash,
                 favorite = false,
             )
         )
     }
 
-    private fun hashFile(filePath: String): String {
-        val file = File(filePath)
-
-        val digest = MessageDigest.getInstance("MD5")
-        val fileBytes = file.readBytes()
-        val hashBytes = digest.digest(fileBytes)
-        return hashBytes.joinToString("") { String.format("%02x", it) }
-    }
-
-
-    suspend fun hashFilesInParallel(files: List<String>): List<String> {
-        return withContext(Dispatchers.IO) {
-            files.map { file ->
-                async {
-                    hashFile(file)
-                }
-            }.awaitAll() // Wait for all results
-        }
-    }
 //    private fun preCacheImages(photos: List<Uri>) {
 //
 //        coroutineScope.launch {

@@ -1,14 +1,11 @@
 package com.maiso.fototriage
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.time.Month
 import java.time.Year
 
@@ -21,21 +18,14 @@ data class MonthUiState(
     val year: Year,
     val month: Month,
     val nrOfPhoto: Int,
-    val loading: Boolean = false,
+    val percentageTriaged: Int,
 )
 
 class OverviewScreenViewModel : ViewModel() {
 
-    val years = FotoDatabase.photos.findUniqueYears()
+    private val years = FotoDatabase.photos.findUniqueYears()
 
-    val months = listOf(
-        "Januari", "Februari", "Maart", "April", "Mei", "Juni",
-        "Juli", "Augustus", "September", "Oktober", "November", "December"
-    )
-
-    val uiState = MutableStateFlow<OverviewScreenUiState>(
-        OverviewScreenUiState()
-    )
+    val uiState = MutableStateFlow(OverviewScreenUiState())
 
     init {
 
@@ -53,23 +43,14 @@ class OverviewScreenViewModel : ViewModel() {
 
             Month.entries.forEach { month ->
                 val photosPerMonth = photosOfTheYear.filterByMonth(year, month)
+
+                val fotosTriaged = photosPerMonth.count { it.triaged }
                 val nrOfPhotosPerMonth = photosPerMonth.size
-                var loading = true
-                viewModelScope.launch {
-                    FotoDatabase.hashFilesInParallel(photosPerMonth.map { it.filePath })
-                    Log.i("MVDB", "Finished hashing $month")
-                    loading = false
-                    uiState.update { overviewScreenUiState ->
-                        overviewScreenUiState.copy(monthPhotos = overviewScreenUiState.monthPhotos.map {
-                            if (it.month == month) {
-                                it.copy(loading = false)
-                            } else {
-                                it
-                            }
-                        }
-                        )
-                    }
-                }
+
+                val percentageTriaged = if (nrOfPhotosPerMonth > 0) {
+                    fotosTriaged / nrOfPhotosPerMonth * 100
+                } else 0
+
                 uiState.update {
                     it.copy(
                         monthPhotos = it.monthPhotos.toMutableList().apply {
@@ -78,7 +59,7 @@ class OverviewScreenViewModel : ViewModel() {
                                     year,
                                     month,
                                     nrOfPhotosPerMonth,
-                                    loading
+                                    percentageTriaged,
                                 )
                             )
                         }
