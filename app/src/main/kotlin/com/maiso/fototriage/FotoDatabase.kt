@@ -114,6 +114,7 @@ object FotoDatabase {
 
                     val triaged = databaseHelper.isFileExists(fileName)
                     Log.i("MVDB", "File in database: $triaged")
+                    val favorite = databaseHelper.isFileFavorite(fileName)
 
                     _photos.add(
                         Photo(
@@ -123,7 +124,7 @@ object FotoDatabase {
                             dateTaken = dateTaken,
                             dateTakenMillis = dateTakenMillis,
                             triaged = triaged,
-                            favorite = false
+                            favorite = favorite
                         )
                     )
 
@@ -147,6 +148,16 @@ object FotoDatabase {
                 fileName = foto.fileName,
                 dateTakenMillis = foto.dateTakenMillis,
                 favorite = false,
+            )
+        )
+    }
+
+    fun markFotoFavorite(foto: Photo) {
+        databaseHelper.insertData(
+            FotoDataBaseEntry(
+                fileName = foto.fileName,
+                dateTakenMillis = foto.dateTakenMillis,
+                favorite = true,
             )
         )
     }

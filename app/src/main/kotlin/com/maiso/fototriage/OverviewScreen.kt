@@ -1,10 +1,17 @@
 package com.maiso.fototriage
 
 import android.content.res.Configuration
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,42 +29,55 @@ import java.time.Year
 fun OverviewScreen(
     uiState: OverviewScreenUiState,
     modifier: Modifier = Modifier,
-    onClick: (Year, Month) -> Unit
+    onYearClick: (Year) -> Unit,
+    onMonthClick: (Year, Month) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        uiState.yearPhotos.forEach { year ->
+        uiState.yearPhotos.forEach { yearUiState ->
             item {
-                Row {
+                HorizontalDivider(thickness = 1.dp, color = Color.Gray)
+                Row(
+                    modifier = Modifier
+                        .padding(vertical = 15.dp)
+                        .clickable {
+                            onYearClick(yearUiState.year)
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Text(
-                        text = year.first.value.toString(),
+                        text = yearUiState.year.value.toString(),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 24.sp
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "${year.second} foto's",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
+                    TextIcon("${yearUiState.nrOfPhoto}", Icons.Outlined.Image)
+
+                    TextIcon(
+                        "${yearUiState.nrOfFavorites}",
+                        Icons.Outlined.Favorite,
+                        Color.Magenta.copy(alpha = 0.5f)
                     )
                 }
                 HorizontalDivider(thickness = 1.dp, color = Color.Gray)
             }
-            uiState.monthPhotos.filter { it.year == year.first }.filter { it.nrOfPhoto != 0 }
+            uiState.monthPhotos.filter { it.year == yearUiState.year }.filter { it.nrOfPhoto != 0 }
                 .forEach { month ->
                     item {
                         MonthRow(
-                            month.month.toDutchString(),
-                            month.nrOfPhoto,
-                            month.nrOfTriaged,
-                            month.nrOfFavorites,
-                        ) { onClick(year.first, month.month) }
+                            modifier = if (month.nrOfPhoto == month.nrOfTriaged + month.nrOfFavorites) {
+                                Modifier.background(Color.Green.copy(alpha = 0.5f))
+                            } else Modifier,
+                            month = month.month.toDutchString(),
+                            nrOfFotos = month.nrOfPhoto,
+                            triaged = month.nrOfTriaged,
+                            favorites = month.nrOfFavorites,
+                        ) { onMonthClick(yearUiState.year, month.month) }
                     }
                 }
         }
     }
 }
-
 
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -67,7 +87,10 @@ fun OverviewPanelPreview() {
     FotoTriageTheme {
         OverviewScreen(
             OverviewScreenUiState(
-                yearPhotos = listOf(Year.of(2025) to 123, Year.of(2024) to 456),
+                yearPhotos = listOf(
+                    YearUiState(Year.of(2025), 785, 10),
+                    YearUiState(Year.of(2024), 456, 15)
+                ),
                 monthPhotos = listOf(
                     MonthUiState(Year.of(2025), Month.JANUARY, 123, 100, 2),
                     MonthUiState(Year.of(2025), Month.FEBRUARY, 123, 90, 2),
@@ -83,7 +106,8 @@ fun OverviewPanelPreview() {
                     MonthUiState(Year.of(2024), Month.JUNE, 123, 0, 2),
                 ),
             ),
-            onClick = { _, _ -> }
+            onMonthClick = { _, _ -> },
+            onYearClick = {}
         )
     }
 }

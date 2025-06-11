@@ -76,6 +76,19 @@ class DatabaseHelper(context: Context) :
         return exists
     }
 
+    fun isFileFavorite(filename: String): Boolean {
+        val db = this.readableDatabase
+        // Adjust the query to check for COLUMN_FAVORITE
+        val query =
+            "SELECT * FROM $TABLE_NAME WHERE $COLUMN_FILENAME LIKE ? AND $COLUMN_FAVORITE = 1"
+        val cursor = db.rawQuery(query, arrayOf("%$filename%"))
+
+        val exists = cursor.count > 0
+        cursor.close()
+        db.close()
+        return exists
+    }
+
     @SuppressLint("Range")
     fun checkFilenameInDatabase(fileNames: List<String>): Pair<List<String>, List<String>> {
         val db = this.readableDatabase

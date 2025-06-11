@@ -12,12 +12,11 @@ data class PhotoTriageUiState(
 )
 
 class PhotoTriageViewModel(
-    year: Year,
-    month: Month,
+    private val year: Year,
+    private val month: Month,
     private val onLastPhotoReached: () -> Unit,
 ) : ViewModel() {
 
-    private var photoNumber: Int = 0
     private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month)
 
     val uiState = MutableStateFlow(
@@ -31,17 +30,28 @@ class PhotoTriageViewModel(
     }
 
     fun onDeletePhoto(photo: Photo) {
-        Log.i("MVDB", "Delete photo $photoNumber")
+        Log.i("MVDB", "Delete photo $photo")
     }
 
     fun onTriagedPhoto(photo: Photo) {
-        Log.i("MVDB", "Delete photo $photoNumber")
+        Log.i("MVDB", "Traiged photo $photo")
+        FotoDatabase.markFotoTriaged(photo)
+        photos = FotoDatabase.photos.filterByMonth(year, month)
+
+        if (!photos.any { !it.triaged && !it.favorite }) {
+            onLastPhotoReached()
+        }
     }
 
     fun onFavoritePhoto(photo: Photo) {
-        Log.i("MVDB", "Delete photo $photoNumber")
-    }
+        Log.i("MVDB", "Favorite photo $photo")
+        FotoDatabase.markFotoFavorite(photo)
+        photos = FotoDatabase.photos.filterByMonth(year, month)
 
+        if (!photos.any { !it.triaged && !it.favorite }) {
+            onLastPhotoReached()
+        }
+    }
 
     companion object {
         class PhotoTriageViewModelFactory(

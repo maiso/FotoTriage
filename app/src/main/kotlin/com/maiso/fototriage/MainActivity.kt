@@ -1,12 +1,14 @@
 package com.maiso.fototriage
 
 import android.Manifest
-import android.content.ContentResolver
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.database.Cursor
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,8 +25,10 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +47,10 @@ sealed interface Dest {
         val month: Month
     )
 
+    data class FavoriteOverviewScreen(
+        val year: Year
+    )
+
     data object TriageFinished
 
 }
@@ -56,6 +64,13 @@ class MainActivity : ComponentActivity() {
 
         checkPermission()
         enableEdgeToEdge()
+
+        createNotificationChannel()
+        if (!isNotificationScheduled(this)) {
+            scheduleMonthlyNotification(this)
+        } else {
+            // Notification is already scheduled
+        }
 
         FotoDatabase.getAllPhotos(
             application.applicationContext
@@ -72,8 +87,13 @@ class MainActivity : ComponentActivity() {
             FotoTriageTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
                     NavDisplay(
+                        modifier = Modifier.padding(padding),
                         backStack = backStack,
                         onBack = { backStack.removeLastOrNull() },
+                        entryDecorators = listOf(
+                            rememberSavedStateNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator(),
+                        ),
                         entryProvider = entryProvider {
                             entry<Dest.LoadingScreen> { _ ->
                                 val loadingScreenViewModel: LoadingScreenViewModel =
@@ -91,12 +111,16 @@ class MainActivity : ComponentActivity() {
 
                                 OverviewScreen(
                                     uiState,
-                                    modifier = Modifier.padding(padding),
-                                    onClick = { year, month ->
+                                    onMonthClick = { year, month ->
                                         backStack.add(
                                             Dest.PhotoTriageScreen(
                                                 year, month
                                             )
+                                        )
+                                    },
+                                    onYearClick = { year ->
+                                        backStack.add(
+                                            Dest.FavoriteOverviewScreen(year)
                                         )
                                     }
                                 )
@@ -116,7 +140,7 @@ class MainActivity : ComponentActivity() {
 
                                 PhotoTriage(
                                     uiState,
-                                    onTraigedPhoto = photoTriageViewModel::onTriagedPhoto,
+                                    onTriagedPhoto = photoTriageViewModel::onTriagedPhoto,
                                     onFavoritePhoto = photoTriageViewModel::onFavoritePhoto,
                                     onDeletePhoto = photoTriageViewModel::onDeletePhoto,
                                     modifier = Modifier.padding(padding),
@@ -124,6 +148,18 @@ class MainActivity : ComponentActivity() {
                             }
                             entry<Dest.TriageFinished> { _ ->
                                 TriageFinished()
+                            }
+                            entry<Dest.FavoriteOverviewScreen> { key ->
+                                val factory =
+                                    FavoriteOverviewViewModel.Companion.FavoriteOverviewViewModelFactory(
+                                        key.year,
+                                    )
+                                val favoriteOverviewViewModel: FavoriteOverviewViewModel =
+                                    viewModel(factory = factory)
+
+                                val uiState by favoriteOverviewViewModel.uiState.collectAsState()
+
+                                FavoriteOverviewScreen(uiState)
                             }
                         }
                     )
@@ -159,36 +195,61 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun getPhotosTakenLastMonth(contentResolver: ContentResolver): List<Uri> {
-        val uris = mutableListOf<Uri>()
-        val oneMonthAgo = Calendar.getInstance().apply {
-            add(Calendar.MONTH, -1)
-        }.timeInMillis
+    private fun createNotificationChannel() {
+        val channelId = "fototriage_monthly_notification_channel"
+        val channelName = "FotoTriage Monthly Notifications"
+        val channelDescription = "Channel for monthly notifications"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
 
-        val projection = arrayOf(MediaStore.Images.Media._ID)
-        val selection = "${MediaStore.Images.Media.DATE_TAKEN} >= ?"
-        val selectionArgs = arrayOf(oneMonthAgo.toString())
+        val channel = NotificationChannel(channelId, channelName, importance).apply {
+            description = channelDescription
+        }
 
-        val cursor: Cursor? = contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            "${MediaStore.Images.Media.DATE_TAKEN} DESC"
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
+    }
+
+
+    private fun scheduleMonthlyNotification(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, NotificationReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        cursor?.use {
-            val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            while (it.moveToNext()) {
-                val id = it.getLong(idColumn)
-                val contentUri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
-                uris.add(contentUri)
+        // Set the calendar to the first day of the next month
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 9) // Set the time you want the notification to appear
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            if (timeInMillis < System.currentTimeMillis()) {
+                add(Calendar.MONTH, 1) // Move to the next month if the date is in the past
             }
         }
 
-        return uris
+        // Set the alarm to repeat every month
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            AlarmManager.INTERVAL_DAY * 30, // Roughly one month
+            pendingIntent
+        )
     }
 
+    private fun isNotificationScheduled(context: Context): Boolean {
+        val intent = Intent(context, NotificationReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        return pendingIntent != null
+    }
     companion object {
         private const val REQUEST_CODE = 100
     }

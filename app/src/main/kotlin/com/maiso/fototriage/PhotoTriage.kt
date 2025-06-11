@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,15 +47,17 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun PhotoTriage(
     uiState: PhotoTriageUiState,
     onDeletePhoto: (photo: Photo) -> Unit,
-    onTraigedPhoto: (photo: Photo) -> Unit,
+    onTriagedPhoto: (photo: Photo) -> Unit,
     onFavoritePhoto: (photo: Photo) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope() // Create a coroutine scope
     val pagerState = rememberPagerState(0) { uiState.photos.size }
     var overlayVisible by remember { mutableStateOf(true) }
     val alpha by animateFloatAsState(
@@ -70,21 +73,30 @@ fun PhotoTriage(
         scale = 1f
         offsetX = 0f
         offsetY = 0f
+        overlayVisible = true
     }
 
     Column(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(bottom = 15.dp),
     ) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .weight(1.0f)
-                .border(1.dp, Color.Red)
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        scale *= zoom // Update scale based on pinch zoom
-                        offsetX += pan.x // Update X offset based on pan
-                        offsetY += pan.y // Update Y offset based on pan
+                        if (scale * zoom > 1) {
+                            scale *= zoom // Update scale based on pinch zoom
+                            if (zoom.toInt() >= 1.0) {
+                                offsetX += pan.x // Update X offset based on pan
+                                offsetY += pan.y // Update Y offset based on pan
+                            }
+                        } else {
+                            offsetX = 0f
+                            offsetY = 0f
+                        }
                     }
                 }
                 .graphicsLayer(
@@ -105,6 +117,7 @@ fun PhotoTriage(
                     modifier = Modifier
                         .fillMaxSize(),
                 )
+
                 if (uiState.photos[page].triaged) {
                     Box(
                         modifier = Modifier
@@ -113,7 +126,7 @@ fun PhotoTriage(
                             .graphicsLayer(alpha = alpha),
                     ) {
                         Surface(
-                            color = Color.Green.copy(alpha = 0.5f), // Semi-transparent green
+                            color = Color.Green.copy(alpha = 0.20f), // Semi-transparent green
                             modifier = Modifier.fillMaxSize()
                         ) {}
                     }
@@ -177,7 +190,15 @@ fun PhotoTriage(
                     modifier = Modifier
                         .weight(1f)
                         .height(100.dp)
-                        .clickable { onFavoritePhoto(uiState.photos[pagerState.currentPage]) }
+                        .clickable {
+                            onFavoritePhoto(uiState.photos[pagerState.currentPage])
+
+                            if (pagerState.currentPage < uiState.photos.size - 1) {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1) // Animate to the next page
+                                }
+                            }
+                        }
                         .background(Color.Magenta.copy(alpha = 0.4f), shape = CircleShape),
                 ) {
                     Box(
@@ -189,7 +210,7 @@ fun PhotoTriage(
                         Icon(
                             imageVector = Icons.Outlined.Favorite,
                             contentDescription = null,
-                            tint = Color.Red,
+                            tint = Color.White,
                         )
                     }
                 }
@@ -199,7 +220,17 @@ fun PhotoTriage(
                     modifier = Modifier
                         .weight(1f)
                         .height(100.dp)
-                        .clickable { onTraigedPhoto(uiState.photos[pagerState.currentPage]) }
+                        .clickable {
+
+                            onTriagedPhoto(uiState.photos[pagerState.currentPage])
+
+                            if (pagerState.currentPage < uiState.photos.size - 1) {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1) // Animate to the next page
+                                }
+                            }
+
+                        }
                         .background(Color.Green.copy(alpha = 0.4f), shape = CircleShape),
                 ) {
                     Box(
@@ -211,7 +242,7 @@ fun PhotoTriage(
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = Color.White,
                         )
                     }
                 }

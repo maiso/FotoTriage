@@ -10,8 +10,14 @@ import java.time.Month
 import java.time.Year
 
 data class OverviewScreenUiState(
-    val yearPhotos: List<Pair<Year, Int>> = emptyList(),
+    val yearPhotos: List<YearUiState> = emptyList(),
     val monthPhotos: List<MonthUiState> = emptyList(),
+)
+
+data class YearUiState(
+    val year: Year,
+    val nrOfPhoto: Int,
+    val nrOfFavorites: Int
 )
 
 data class MonthUiState(
@@ -33,11 +39,11 @@ class OverviewScreenViewModel : ViewModel() {
         years.forEach { year ->
             val photosOfTheYear = FotoDatabase.photos.filterByYear(year)
             val nrOfPhotosPerYear = photosOfTheYear.size
-
+            val nrOfFavorites: Int = photosOfTheYear.count { it.favorite }
             uiState.update {
                 it.copy(
                     yearPhotos = it.yearPhotos.toMutableList().apply {
-                        add(Pair(year, nrOfPhotosPerYear))
+                        add(YearUiState(year, nrOfPhotosPerYear, nrOfFavorites))
                     }
                 )
             }
@@ -47,6 +53,7 @@ class OverviewScreenViewModel : ViewModel() {
 
                 val fotosTriaged = photosPerMonth.count { it.triaged }
                 val nrOfPhotosPerMonth = photosPerMonth.size
+                val nrOfFavoritesPerMonth: Int = photosPerMonth.count { it.favorite }
 
                 uiState.update {
                     it.copy(
@@ -57,7 +64,7 @@ class OverviewScreenViewModel : ViewModel() {
                                     month,
                                     nrOfPhotosPerMonth,
                                     fotosTriaged,
-                                    0,
+                                    nrOfFavoritesPerMonth,
                                 )
                             )
                         }

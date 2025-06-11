@@ -28,9 +28,16 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
-fun MonthRow(month: String, nrOfFotos: Int, triaged: Int, favorites: Int, onClick: () -> Unit) {
+fun MonthRow(
+    month: String,
+    nrOfFotos: Int,
+    triaged: Int,
+    favorites: Int,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .padding(vertical = 15.dp)
             .clickable {
                 onClick()
@@ -77,6 +84,8 @@ fun Month.toDutchString(): String {
 @Composable
 fun MonthRowPreview() {
     FotoTriageTheme {
-        MonthRow("Maart", 100, 25, 2, {})
+        MonthRow("Maart", 100, 25, 2) {
+
+        }
     }
 }
