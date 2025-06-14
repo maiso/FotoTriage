@@ -2,7 +2,11 @@ package com.maiso.fototriage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import java.time.Year
 
 data class FavoriteOverviewUiState(
@@ -12,14 +16,17 @@ data class FavoriteOverviewUiState(
 class FavoriteOverviewViewModel(
     private val year: Year,
 ) : ViewModel() {
-
-    private var photos: List<Photo> = FotoDatabase.photos.filterByYear(year).filter { it.favorite }
-
     val uiState = MutableStateFlow(
-        FavoriteOverviewUiState(
-            photos = photos
-        )
+        FavoriteOverviewUiState()
     )
+
+    init {
+        FotoDatabase.photos.onEach { photos ->
+            uiState.update {
+                it.copy(photos = photos.filterByYear(year).filter { it.favorite })
+            }
+        }.launchIn(viewModelScope)
+    }
 
     companion object {
         class FavoriteOverviewViewModelFactory(

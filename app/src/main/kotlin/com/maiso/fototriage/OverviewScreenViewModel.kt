@@ -2,9 +2,12 @@ package com.maiso.fototriage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import java.time.Month
 import java.time.Year
@@ -31,49 +34,51 @@ data class MonthUiState(
 
 class OverviewScreenViewModel : ViewModel() {
 
-    private val years = FotoDatabase.photos.findUniqueYears()
-
     val uiState = MutableStateFlow(OverviewScreenUiState())
 
     init {
 
-        years.forEach { year ->
-            val photosOfTheYear = FotoDatabase.photos.filterByYear(year)
-            val nrOfPhotosPerYear = photosOfTheYear.size
-            val nrOfFavorites: Int = photosOfTheYear.count { it.favorite }
-            uiState.update {
-                it.copy(
-                    yearPhotos = it.yearPhotos.toMutableList().apply {
-                        add(YearUiState(year, nrOfPhotosPerYear, nrOfFavorites))
-                    }
-                )
-            }
+        FotoDatabase.photos.onEach { photos ->
+            uiState.value = OverviewScreenUiState()
 
-            Month.entries.forEach { month ->
-                val photosPerMonth = photosOfTheYear.filterByMonth(year, month)
-                val nrOfPhoto = photosPerMonth.size
-                val untriaged = photosPerMonth.filter { !it.triaged && !it.favorite }.size
-                val triaged = photosPerMonth.count { it.triaged }
-                val favorites: Int = photosPerMonth.count { it.favorite }
-
+            photos.findUniqueYears().forEach { year ->
+                val photosOfTheYear = photos.filterByYear(year)
+                val nrOfPhotosPerYear = photosOfTheYear.size
+                val nrOfFavorites: Int = photosOfTheYear.count { it.favorite }
                 uiState.update {
                     it.copy(
-                        monthPhotos = it.monthPhotos.toMutableList().apply {
-                            add(
-                                MonthUiState(
-                                    year,
-                                    month,
-                                    nrOfPhoto,
-                                    untriaged,
-                                    triaged,
-                                    favorites,
-                                )
-                            )
+                        yearPhotos = it.yearPhotos.toMutableList().apply {
+                            add(YearUiState(year, nrOfPhotosPerYear, nrOfFavorites))
                         }
                     )
                 }
+
+                Month.entries.forEach { month ->
+                    val photosPerMonth = photosOfTheYear.filterByMonth(year, month)
+                    val nrOfPhoto = photosPerMonth.size
+                    val untriaged = photosPerMonth.filter { !it.triaged && !it.favorite }.size
+                    val triaged = photosPerMonth.count { it.triaged }
+                    val favorites: Int = photosPerMonth.count { it.favorite }
+
+                    uiState.update {
+                        it.copy(
+                            monthPhotos = it.monthPhotos.toMutableList().apply {
+                                add(
+                                    MonthUiState(
+                                        year,
+                                        month,
+                                        nrOfPhoto,
+                                        untriaged,
+                                        triaged,
+                                        favorites,
+                                    )
+                                )
+                            }
+                        )
+                    }
+                }
             }
-        }
+        }.launchIn(viewModelScope)
     }
 
     companion object {

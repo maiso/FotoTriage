@@ -76,7 +76,7 @@ fun TextIcon(text: String, icon: ImageVector, iconColor: Color = LocalContentCol
 }
 
 fun Month.toDutchString(): String {
-    return getDisplayName(TextStyle.FULL, Locale.getDefault()) // Dutch locale
+    return getDisplayName(TextStyle.FULL, Locale.getDefault())
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)

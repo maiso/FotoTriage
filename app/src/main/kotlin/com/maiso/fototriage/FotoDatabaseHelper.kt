@@ -40,7 +40,7 @@ class DatabaseHelper(context: Context) :
             put(COLUMN_DATA_TAKEN_MILLIS, data.dateTakenMillis)
             put(COLUMN_FAVORITE, if (data.favorite) 1 else 0) // Store boolean as INTEGER
         }
-        db.insert(TABLE_NAME, null, values)
+        db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_REPLACE)
         db.close()
     }
 

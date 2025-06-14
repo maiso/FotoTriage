@@ -3,7 +3,11 @@ package com.maiso.fototriage
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import java.time.Month
 import java.time.Year
 
@@ -18,20 +22,26 @@ class PhotoTriageViewModel(
     private val onLastPhotoReached: () -> Unit,
 ) : ViewModel() {
 
-    private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month).let {
-        if (!showAllPhotos) it.filter { !it.favorite && !it.triaged } else it
-    }
-
     val uiState = MutableStateFlow(
-        PhotoTriageUiState(
-            photos = photos
-        )
+        PhotoTriageUiState()
     )
 
     init {
-        if (photos.isEmpty()) {
-            onLastPhotoReached()
-        }
+        FotoDatabase.photos.onEach { allPhotos ->
+            allPhotos.filterByMonth(year, month).let { filteredPhotos ->
+                if (filteredPhotos.isEmpty() || (!showAllPhotos && !filteredPhotos.any { !it.triaged && !it.favorite })) {
+                    onLastPhotoReached()
+                } else {
+                    uiState.update {
+                        it.copy(
+                            photos =
+                                if (!showAllPhotos) filteredPhotos.filter { !it.favorite && !it.triaged } else filteredPhotos
+                        )
+                    }
+                }
+            }
+        }.launchIn(viewModelScope)
+
     }
 
     fun onDeletePhoto(photo: Photo) {
@@ -40,20 +50,10 @@ class PhotoTriageViewModel(
 
     fun onTriagedPhoto(photo: Photo) {
         FotoDatabase.markFotoTriaged(photo)
-        updatePhotos()
     }
 
     fun onFavoritePhoto(photo: Photo) {
         FotoDatabase.markFotoFavorite(photo)
-        updatePhotos()
-    }
-
-    private fun updatePhotos() {
-        photos = FotoDatabase.photos.filterByMonth(year, month)
-
-        if (!photos.any { !it.triaged && !it.favorite }) {
-            onLastPhotoReached()
-        }
     }
 
     companion object {

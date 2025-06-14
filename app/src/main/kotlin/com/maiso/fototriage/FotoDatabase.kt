@@ -8,6 +8,9 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.Month
@@ -50,8 +53,8 @@ object FotoDatabase {
 
     private lateinit var databaseHelper: DatabaseHelper
 
-    private val _photos: MutableList<Photo> = mutableListOf()
-    val photos: List<Photo> = _photos
+    private val _photos: MutableStateFlow<List<Photo>> = MutableStateFlow(emptyList())
+    val photos: StateFlow<List<Photo>> = _photos.asStateFlow()
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
@@ -59,7 +62,7 @@ object FotoDatabase {
 
         databaseHelper = DatabaseHelper(context)
 
-        _photos.clear()
+        _photos.value = emptyList()
 
         coroutineScope.launch {
             val projection = arrayOf(
@@ -116,8 +119,8 @@ object FotoDatabase {
                     Log.i("MVDB", "File in database: $triaged")
                     val favorite = databaseHelper.isFileFavorite(fileName)
 
-                    _photos.add(
-                        Photo(
+                    _photos.update {
+                        it + Photo(
                             uri = uri,
                             filePath = filePath,
                             fileName = fileName,
@@ -126,8 +129,7 @@ object FotoDatabase {
                             triaged = triaged,
                             favorite = favorite
                         )
-                    )
-
+                    }
                     currentCount++
                     val percentage = ((currentCount * 100) / totalCount)
                     progress.value = Triple(currentCount, totalCount, percentage)
@@ -135,7 +137,7 @@ object FotoDatabase {
                     //TODO Check for any files in database but not on device.
                 }
             }
-            Log.i("MVDB", "Got ${_photos.size} photos")
+            Log.i("MVDB", "Got ${_photos.value.size} photos")
 
             onFinished()
 //        preCacheImages(galleryImageUrls)
@@ -150,6 +152,16 @@ object FotoDatabase {
                 favorite = false,
             )
         )
+        //TODO check result
+        _photos.update { photos ->
+            photos.map { photo ->
+                if (photo.fileName == foto.fileName) {
+                    photo.copy(triaged = true)
+                } else {
+                    photo
+                }
+            }
+        }
     }
 
     fun markFotoFavorite(foto: Photo) {
@@ -157,9 +169,18 @@ object FotoDatabase {
             FotoDataBaseEntry(
                 fileName = foto.fileName,
                 dateTakenMillis = foto.dateTakenMillis,
-                favorite = true,
+                favorite = !foto.favorite,
             )
         )
+        _photos.update { photos ->
+            photos.map { photo ->
+                if (photo.fileName == foto.fileName) {
+                    photo.copy(favorite = !foto.favorite)
+                } else {
+                    photo
+                }
+            }
+        }
     }
 
 //    private fun preCacheImages(photos: List<Uri>) {
