@@ -44,14 +44,18 @@ sealed interface Dest {
 
     data class PhotoTriageScreen(
         val year: Year,
-        val month: Month
+        val month: Month,
+        val showAllPhotos: Boolean
     )
 
     data class FavoriteOverviewScreen(
         val year: Year
     )
 
-    data object TriageFinished
+    data class TriageFinished(
+        val year: Year,
+        val month: Month
+    )
 
 }
 
@@ -114,7 +118,7 @@ class MainActivity : ComponentActivity() {
                                     onMonthClick = { year, month ->
                                         backStack.add(
                                             Dest.PhotoTriageScreen(
-                                                year, month
+                                                year, month, showAllPhotos = false
                                             )
                                         )
                                     },
@@ -129,9 +133,15 @@ class MainActivity : ComponentActivity() {
                                 val factory =
                                     PhotoTriageViewModel.Companion.PhotoTriageViewModelFactory(
                                         key.year,
-                                        key.month
+                                        key.month,
+                                        key.showAllPhotos
                                     ) {
-                                        backStack.add(Dest.TriageFinished)
+                                        backStack.add(
+                                            Dest.TriageFinished(
+                                                key.year,
+                                                key.month
+                                            )
+                                        )
                                     }
                                 val photoTriageViewModel: PhotoTriageViewModel =
                                     viewModel(factory = factory)
@@ -146,8 +156,24 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(padding),
                                 )
                             }
-                            entry<Dest.TriageFinished> { _ ->
-                                TriageFinished()
+                            entry<Dest.TriageFinished> { key ->
+                                TriageFinished(
+                                    year = key.year,
+                                    month = key.month,
+                                    onShowAllPhoto = {
+                                        backStack.removeLastOrNull()
+                                        backStack.removeLastOrNull()
+                                        backStack.add(
+                                            Dest.PhotoTriageScreen(
+                                                key.year, key.month, showAllPhotos = true
+                                            )
+                                        )
+                                    },
+                                    onClosePanel = {
+                                        backStack.removeLastOrNull()
+                                        backStack.removeLastOrNull()
+                                    }
+                                )
                             }
                             entry<Dest.FavoriteOverviewScreen> { key ->
                                 val factory =
@@ -169,7 +195,6 @@ class MainActivity : ComponentActivity() {
     }
 
 
-
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
@@ -181,13 +206,18 @@ class MainActivity : ComponentActivity() {
         }
 
     private fun checkPermission() {
-        val permission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+        val permission =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
         Log.i("MVDB", "permissions: $permission")
 
         when {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED -> {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED -> {
                 // You can use the permission
             }
+
             else -> {
                 // Request the permission
                 requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
@@ -250,6 +280,7 @@ class MainActivity : ComponentActivity() {
         )
         return pendingIntent != null
     }
+
     companion object {
         private const val REQUEST_CODE = 100
     }

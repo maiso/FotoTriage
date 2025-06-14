@@ -80,7 +80,7 @@ object FotoDatabase {
                 projection,
                 selection,
                 selectionArgs,
-                "$orderBy DESC"
+                "$orderBy ASC"
             )?.use { cursor ->
                 val idColumn = cursor.getColumnIndexOrThrow(Images.Media._ID)
                 val nameColumn = cursor.getColumnIndexOrThrow(Images.Media.DISPLAY_NAME)

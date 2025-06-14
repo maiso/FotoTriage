@@ -14,10 +14,13 @@ data class PhotoTriageUiState(
 class PhotoTriageViewModel(
     private val year: Year,
     private val month: Month,
+    private val showAllPhotos: Boolean,
     private val onLastPhotoReached: () -> Unit,
 ) : ViewModel() {
 
-    private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month)
+    private var photos: List<Photo> = FotoDatabase.photos.filterByMonth(year, month).let {
+        if (!showAllPhotos) it.filter { !it.favorite && !it.triaged } else it
+    }
 
     val uiState = MutableStateFlow(
         PhotoTriageUiState(
@@ -26,7 +29,9 @@ class PhotoTriageViewModel(
     )
 
     init {
-        Log.i("MVDB", "FotoDatabase: ${FotoDatabase.photos.size}")
+        if (photos.isEmpty()) {
+            onLastPhotoReached()
+        }
     }
 
     fun onDeletePhoto(photo: Photo) {
@@ -34,18 +39,16 @@ class PhotoTriageViewModel(
     }
 
     fun onTriagedPhoto(photo: Photo) {
-        Log.i("MVDB", "Traiged photo $photo")
         FotoDatabase.markFotoTriaged(photo)
-        photos = FotoDatabase.photos.filterByMonth(year, month)
-
-        if (!photos.any { !it.triaged && !it.favorite }) {
-            onLastPhotoReached()
-        }
+        updatePhotos()
     }
 
     fun onFavoritePhoto(photo: Photo) {
-        Log.i("MVDB", "Favorite photo $photo")
         FotoDatabase.markFotoFavorite(photo)
+        updatePhotos()
+    }
+
+    private fun updatePhotos() {
         photos = FotoDatabase.photos.filterByMonth(year, month)
 
         if (!photos.any { !it.triaged && !it.favorite }) {
@@ -57,12 +60,13 @@ class PhotoTriageViewModel(
         class PhotoTriageViewModelFactory(
             private val year: Year,
             private val month: Month,
+            private val showAllPhotos: Boolean,
             private val onLastPhotoReached: () -> Unit
         ) : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(PhotoTriageViewModel::class.java)) {
                     @Suppress("UNCHECKED_CAST")
-                    return PhotoTriageViewModel(year, month, onLastPhotoReached) as T
+                    return PhotoTriageViewModel(year, month, showAllPhotos, onLastPhotoReached) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }

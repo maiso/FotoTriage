@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +30,7 @@ import java.util.Locale
 @Composable
 fun MonthRow(
     month: String,
-    nrOfFotos: Int,
+    untriaged: Int,
     triaged: Int,
     favorites: Int,
     modifier: Modifier = Modifier,
@@ -51,7 +51,7 @@ fun MonthRow(
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.weight(1f))
-        TextIcon("$nrOfFotos", Icons.Outlined.Image)
+        TextIcon("$untriaged", Icons.AutoMirrored.Filled.HelpOutline)
         TextIcon("$triaged", Icons.Outlined.CheckCircle, Color.Green.copy(alpha = 0.5f))
         TextIcon("$favorites", Icons.Outlined.Favorite, Color.Magenta.copy(alpha = 0.5f))
     }

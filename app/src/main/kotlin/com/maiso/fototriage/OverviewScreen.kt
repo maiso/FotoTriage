@@ -32,7 +32,9 @@ fun OverviewScreen(
     onYearClick: (Year) -> Unit,
     onMonthClick: (Year, Month) -> Unit
 ) {
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    LazyColumn(modifier = modifier
+        .fillMaxSize()
+        .padding(horizontal = 5.dp)) {
         uiState.yearPhotos.forEach { yearUiState ->
             item {
                 HorizontalDivider(thickness = 1.dp, color = Color.Gray)
@@ -65,11 +67,11 @@ fun OverviewScreen(
                 .forEach { month ->
                     item {
                         MonthRow(
-                            modifier = if (month.nrOfPhoto == month.nrOfTriaged + month.nrOfFavorites) {
+                            modifier = if (month.nrOfUntriaged == month.nrOfTriaged + month.nrOfFavorites) {
                                 Modifier.background(Color.Green.copy(alpha = 0.5f))
                             } else Modifier,
                             month = month.month.toDutchString(),
-                            nrOfFotos = month.nrOfPhoto,
+                            untriaged = month.nrOfUntriaged,
                             triaged = month.nrOfTriaged,
                             favorites = month.nrOfFavorites,
                         ) { onMonthClick(yearUiState.year, month.month) }
@@ -92,18 +94,18 @@ fun OverviewPanelPreview() {
                     YearUiState(Year.of(2024), 456, 15)
                 ),
                 monthPhotos = listOf(
-                    MonthUiState(Year.of(2025), Month.JANUARY, 123, 100, 2),
-                    MonthUiState(Year.of(2025), Month.FEBRUARY, 123, 90, 2),
-                    MonthUiState(Year.of(2025), Month.MARCH, 123, 80, 2),
-                    MonthUiState(Year.of(2025), Month.APRIL, 123, 70, 2),
-                    MonthUiState(Year.of(2025), Month.MAY, 123, 60, 2),
-                    MonthUiState(Year.of(2025), Month.JUNE, 123, 50, 2),
-                    MonthUiState(Year.of(2024), Month.JANUARY, 456, 40, 2),
-                    MonthUiState(Year.of(2024), Month.FEBRUARY, 123, 30, 2),
-                    MonthUiState(Year.of(2024), Month.MARCH, 123, 20, 2),
-                    MonthUiState(Year.of(2024), Month.APRIL, 123, 10, 2),
-                    MonthUiState(Year.of(2024), Month.MAY, 123, 0, 2),
-                    MonthUiState(Year.of(2024), Month.JUNE, 123, 0, 2),
+                    MonthUiState(Year.of(2025), Month.JANUARY, 123, 100, 21, 2),
+                    MonthUiState(Year.of(2025), Month.FEBRUARY, 123, 90, 11, 2),
+                    MonthUiState(Year.of(2025), Month.MARCH, 123, 80, 1, 2),
+                    MonthUiState(Year.of(2025), Month.APRIL, 123, 70, 1, 2),
+                    MonthUiState(Year.of(2025), Month.MAY, 123, 60, 1, 2),
+                    MonthUiState(Year.of(2025), Month.JUNE, 123, 50, 1, 2),
+                    MonthUiState(Year.of(2024), Month.JANUARY, 456, 40, 1, 2),
+                    MonthUiState(Year.of(2024), Month.FEBRUARY, 123, 30, 1, 2),
+                    MonthUiState(Year.of(2024), Month.MARCH, 123, 20, 1, 2),
+                    MonthUiState(Year.of(2024), Month.APRIL, 123, 10, 1, 2),
+                    MonthUiState(Year.of(2024), Month.MAY, 123, 0, 1, 2),
+                    MonthUiState(Year.of(2024), Month.JUNE, 123, 0, 1, 2),
                 ),
             ),
             onMonthClick = { _, _ -> },

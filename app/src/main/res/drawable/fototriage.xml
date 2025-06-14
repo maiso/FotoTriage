@@ -1,0 +1,43 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M20,0L180,0A20,20 0,0 1,200 20L200,180A20,20 0,0 1,180 200L20,200A20,20 0,0 1,0 180L0,20A20,20 0,0 1,20 0z" />
+    <path
+        android:fillColor="#D0D0D0"
+        android:pathData="M42,30L158,30A12,12 0,0 1,170 42L170,128A12,12 0,0 1,158 140L42,140A12,12 0,0 1,30 128L30,42A12,12 0,0 1,42 30z" />
+    <path
+        android:fillColor="#B0B0B0"
+        android:pathData="M30,120L60,80L90,100L120,70L170,140H30V120Z" />
+    <path
+        android:fillColor="#888888"
+        android:pathData="M55,55m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M160,160m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M150,160L158,168L174,148"
+        android:strokeWidth="5"
+        android:strokeColor="#ffffff"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M43,135L75,135A8,8 0,0 1,83 143L83,175A8,8 0,0 1,75 183L43,183A8,8 0,0 1,35 175L35,143A8,8 0,0 1,43 135z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M51,147L51,147A2,2 0,0 1,53 149L53,165A2,2 0,0 1,51 167L51,167A2,2 0,0 1,49 165L49,149A2,2 0,0 1,51 147z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M59,147L59,147A2,2 0,0 1,61 149L61,165A2,2 0,0 1,59 167L59,167A2,2 0,0 1,57 165L57,149A2,2 0,0 1,59 147z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M67,147L67,147A2,2 0,0 1,69 149L69,165A2,2 0,0 1,67 167L67,167A2,2 0,0 1,65 165L65,149A2,2 0,0 1,67 147z" />
+    <path
+        android:fillColor="#D32F2F"
+        android:pathData="M50,139L68,139A3,3 0,0 1,71 142L71,142A3,3 0,0 1,68 145L50,145A3,3 0,0 1,47 142L47,142A3,3 0,0 1,50 139z" />
+</vector>

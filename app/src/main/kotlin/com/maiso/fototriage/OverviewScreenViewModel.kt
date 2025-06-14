@@ -24,6 +24,7 @@ data class MonthUiState(
     val year: Year,
     val month: Month,
     val nrOfPhoto: Int,
+    val nrOfUntriaged: Int,
     val nrOfTriaged: Int,
     val nrOfFavorites: Int
 )
@@ -50,10 +51,10 @@ class OverviewScreenViewModel : ViewModel() {
 
             Month.entries.forEach { month ->
                 val photosPerMonth = photosOfTheYear.filterByMonth(year, month)
-
-                val fotosTriaged = photosPerMonth.count { it.triaged }
-                val nrOfPhotosPerMonth = photosPerMonth.size
-                val nrOfFavoritesPerMonth: Int = photosPerMonth.count { it.favorite }
+                val nrOfPhoto = photosPerMonth.size
+                val untriaged = photosPerMonth.filter { !it.triaged && !it.favorite }.size
+                val triaged = photosPerMonth.count { it.triaged }
+                val favorites: Int = photosPerMonth.count { it.favorite }
 
                 uiState.update {
                     it.copy(
@@ -62,9 +63,10 @@ class OverviewScreenViewModel : ViewModel() {
                                 MonthUiState(
                                     year,
                                     month,
-                                    nrOfPhotosPerMonth,
-                                    fotosTriaged,
-                                    nrOfFavoritesPerMonth,
+                                    nrOfPhoto,
+                                    untriaged,
+                                    triaged,
+                                    favorites,
                                 )
                             )
                         }
