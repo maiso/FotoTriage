@@ -30,6 +30,16 @@ import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.maiso.fototriage.database.PhotoDatabase
+import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewScreen
+import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewViewModel
+import com.maiso.fototriage.screens.loading.LoadingScreen
+import com.maiso.fototriage.screens.loading.LoadingScreenViewModel
+import com.maiso.fototriage.screens.overview.OverviewScreen
+import com.maiso.fototriage.screens.overview.OverviewScreenViewModel
+import com.maiso.fototriage.screens.phototriage.PhotoTriage
+import com.maiso.fototriage.screens.phototriage.PhotoTriageViewModel
+import com.maiso.fototriage.screens.phototriage.triagefinished.TriageFinished
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,7 +86,7 @@ class MainActivity : ComponentActivity() {
             // Notification is already scheduled
         }
 
-        FotoDatabase.getAllPhotos(
+        PhotoDatabase.getAllPhotos(
             application.applicationContext
         ) {
             withContext(Dispatchers.Main) {

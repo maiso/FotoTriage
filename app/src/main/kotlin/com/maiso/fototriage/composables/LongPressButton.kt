@@ -1,4 +1,4 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.composables
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures

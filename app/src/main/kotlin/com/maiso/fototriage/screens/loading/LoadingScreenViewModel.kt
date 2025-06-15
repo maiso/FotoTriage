@@ -1,10 +1,11 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.screens.loading
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.maiso.fototriage.database.PhotoDatabase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
@@ -28,7 +29,7 @@ class LoadingScreenViewModel : ViewModel() {
             )
         }
 
-        FotoDatabase.progress.filterNotNull().onEach { (current, total, percentage) ->
+        PhotoDatabase.progress.filterNotNull().onEach { (current, total, percentage) ->
             uiState.update {
                 it.copy(
                     progressCurrent = current,

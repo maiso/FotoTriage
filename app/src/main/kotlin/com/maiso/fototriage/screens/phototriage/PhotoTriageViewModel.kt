@@ -1,9 +1,12 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.screens.phototriage
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.maiso.fototriage.database.Photo
+import com.maiso.fototriage.database.PhotoDatabase
+import com.maiso.fototriage.database.filterByMonth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -27,7 +30,7 @@ class PhotoTriageViewModel(
     )
 
     init {
-        FotoDatabase.photos.onEach { allPhotos ->
+        PhotoDatabase.photos.onEach { allPhotos ->
             allPhotos.filterByMonth(year, month).let { filteredPhotos ->
                 if (filteredPhotos.isEmpty() || (!showAllPhotos && !filteredPhotos.any { !it.triaged && !it.favorite })) {
                     onLastPhotoReached()
@@ -49,11 +52,11 @@ class PhotoTriageViewModel(
     }
 
     fun onTriagedPhoto(photo: Photo) {
-        FotoDatabase.markFotoTriaged(photo)
+        PhotoDatabase.markPhotoTriaged(photo)
     }
 
     fun onFavoritePhoto(photo: Photo) {
-        FotoDatabase.markFotoFavorite(photo)
+        PhotoDatabase.markPhotoFavorite(photo)
     }
 
     companion object {

@@ -1,10 +1,14 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.screens.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.maiso.fototriage.database.PhotoDatabase
+import com.maiso.fototriage.database.filterByMonth
+import com.maiso.fototriage.database.filterByYear
+import com.maiso.fototriage.database.findUniqueYears
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -38,7 +42,7 @@ class OverviewScreenViewModel : ViewModel() {
 
     init {
 
-        FotoDatabase.photos.onEach { photos ->
+        PhotoDatabase.photos.onEach { photos ->
             uiState.value = OverviewScreenUiState()
 
             photos.findUniqueYears().forEach { year ->
@@ -57,7 +61,7 @@ class OverviewScreenViewModel : ViewModel() {
                     val photosPerMonth = photosOfTheYear.filterByMonth(year, month)
                     val nrOfPhoto = photosPerMonth.size
                     val untriaged = photosPerMonth.filter { !it.triaged && !it.favorite }.size
-                    val triaged = photosPerMonth.count { it.triaged }
+                    val triaged = photosPerMonth.count { it.triaged && !it.favorite }
                     val favorites: Int = photosPerMonth.count { it.favorite }
 
                     uiState.update {

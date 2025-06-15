@@ -1,4 +1,4 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.screens.loading
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement

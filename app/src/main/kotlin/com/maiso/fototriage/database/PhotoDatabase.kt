@@ -1,4 +1,4 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.database
 
 import android.content.ContentUris
 import android.content.Context
@@ -44,11 +44,11 @@ fun List<Photo>.findUniqueYears(): Set<Year> {
     return this.map { photo ->
         val calendar = Calendar.getInstance().apply { time = photo.dateTaken }
         Year.of(calendar.get(Calendar.YEAR))
-    }.distinct().toSet() // Convert to Set to ensure uniqueness
+    }.distinct().toSet()
 }
 
 
-object FotoDatabase {
+object PhotoDatabase {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     private lateinit var databaseHelper: DatabaseHelper
@@ -115,9 +115,7 @@ object FotoDatabase {
                     )
 
 
-                    val triaged = databaseHelper.isFileExists(fileName)
-                    Log.i("MVDB", "File in database: $triaged")
-                    val favorite = databaseHelper.isFileFavorite(fileName)
+                    val triaged = databaseHelper.addOrRetrieveEntry(fileName, dateTakenMillis)
 
                     _photos.update {
                         it + Photo(
@@ -126,8 +124,8 @@ object FotoDatabase {
                             fileName = fileName,
                             dateTaken = dateTaken,
                             dateTakenMillis = dateTakenMillis,
-                            triaged = triaged,
-                            favorite = favorite
+                            triaged = triaged.first,
+                            favorite = triaged.second
                         )
                     }
                     currentCount++
@@ -139,45 +137,48 @@ object FotoDatabase {
             }
             Log.i("MVDB", "Got ${_photos.value.size} photos")
 
+            databaseHelper.cleanUpDatabase(_photos.value.map { it.fileName })
             onFinished()
 //        preCacheImages(galleryImageUrls)
         }
     }
 
-    fun markFotoTriaged(foto: Photo) {
+    fun markPhotoTriaged(photo: Photo) {
         databaseHelper.insertData(
-            FotoDataBaseEntry(
-                fileName = foto.fileName,
-                dateTakenMillis = foto.dateTakenMillis,
-                favorite = false,
+            PhotoDataBaseEntry(
+                fileName = photo.fileName,
+                dateTakenMillis = photo.dateTakenMillis,
+                triaged = !photo.triaged,
+                favorite = photo.favorite,
             )
         )
         //TODO check result
         _photos.update { photos ->
-            photos.map { photo ->
-                if (photo.fileName == foto.fileName) {
-                    photo.copy(triaged = true)
+            photos.map {
+                if (it.fileName == photo.fileName) {
+                    it.copy(triaged = !photo.triaged)
                 } else {
-                    photo
+                    it
                 }
             }
         }
     }
 
-    fun markFotoFavorite(foto: Photo) {
+    fun markPhotoFavorite(photo: Photo) {
         databaseHelper.insertData(
-            FotoDataBaseEntry(
-                fileName = foto.fileName,
-                dateTakenMillis = foto.dateTakenMillis,
-                favorite = !foto.favorite,
+            PhotoDataBaseEntry(
+                fileName = photo.fileName,
+                dateTakenMillis = photo.dateTakenMillis,
+                triaged = photo.triaged,
+                favorite = !photo.favorite,
             )
         )
         _photos.update { photos ->
-            photos.map { photo ->
-                if (photo.fileName == foto.fileName) {
-                    photo.copy(favorite = !foto.favorite)
+            photos.map {
+                if (it.fileName == photo.fileName) {
+                    it.copy(favorite = !photo.favorite)
                 } else {
-                    photo
+                    it
                 }
             }
         }
@@ -206,19 +207,4 @@ object FotoDatabase {
 //            }
 //        }
 //    }
-
-    fun filterDatesByYear(dates: List<Date>, year: Int): List<Date> {
-        return dates.filter { date ->
-            val calendar = Calendar.getInstance().apply { time = date }
-            calendar.get(Calendar.YEAR) == year
-        }
-    }
-
-    fun filterDatesByMonth(dates: List<Date>, year: Int, month: Int): List<Date> {
-        return dates.filter { date ->
-            val calendar = Calendar.getInstance().apply { time = date }
-            calendar.get(Calendar.YEAR) == year && (calendar.get(Calendar.MONTH) + 1) == month // Month is 0-based
-        }
-    }
-
 }

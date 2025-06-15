@@ -1,4 +1,4 @@
-package com.maiso.fototriage
+package com.maiso.fototriage.screens.phototriage.triagefinished
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maiso.fototriage.screens.overview.toDutchString
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import java.time.Month
 import java.time.Year
