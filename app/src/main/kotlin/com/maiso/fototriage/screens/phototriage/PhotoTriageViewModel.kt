@@ -23,6 +23,7 @@ class PhotoTriageViewModel(
     private val month: Month,
     private val showAllPhotos: Boolean,
     private val onLastPhotoReached: () -> Unit,
+    private val deletePhoto: (Photo) -> Unit,
 ) : ViewModel() {
 
     val uiState = MutableStateFlow(
@@ -49,6 +50,7 @@ class PhotoTriageViewModel(
 
     fun onDeletePhoto(photo: Photo) {
         Log.i("MVDB", "Delete photo $photo")
+        deletePhoto(photo)
     }
 
     fun onTriagedPhoto(photo: Photo) {
@@ -64,12 +66,19 @@ class PhotoTriageViewModel(
             private val year: Year,
             private val month: Month,
             private val showAllPhotos: Boolean,
-            private val onLastPhotoReached: () -> Unit
+            private val onLastPhotoReached: () -> Unit,
+            private val deletePhoto: (Photo) -> Unit
         ) : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 if (modelClass.isAssignableFrom(PhotoTriageViewModel::class.java)) {
                     @Suppress("UNCHECKED_CAST")
-                    return PhotoTriageViewModel(year, month, showAllPhotos, onLastPhotoReached) as T
+                    return PhotoTriageViewModel(
+                        year,
+                        month,
+                        showAllPhotos,
+                        onLastPhotoReached,
+                        deletePhoto
+                    ) as T
                 }
                 throw IllegalArgumentException("Unknown ViewModel class")
             }

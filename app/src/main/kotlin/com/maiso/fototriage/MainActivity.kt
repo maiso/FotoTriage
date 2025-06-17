@@ -9,7 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entry
@@ -73,11 +77,42 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var backStack: SnapshotStateList<Any>
 
+    // Launcher to take user to the “All files access” page for *this* app
+    private val manageAllFilesLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            // We come back here after the user toggles the switch
+            if (Environment.isExternalStorageManager()) {
+                Log.i("MVDB", "Manage all files permission granted")
+            } else {
+                // permission still not granted; inform the user or retry
+                Toast.makeText(applicationContext, "Permission not granted", Toast.LENGTH_LONG)
+                    .show()
+            }
+        }
+
+    private fun hasManageAllFilesPermission(): Boolean {
+        return Environment.isExternalStorageManager()
+    }
+
+    private fun requestManageAllFilesPermission() {
+        // Opens Settings > Apps > YourApp > “Allow management of all files”
+        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+            data = "package:$packageName".toUri()
+        }
+        manageAllFilesLauncher.launch(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         checkPermission()
         enableEdgeToEdge()
+
+        if (hasManageAllFilesPermission()) {
+            Log.i("MVDB", "Manage all files permission granted")
+        } else {
+            requestManageAllFilesPermission()
+        }
 
         createNotificationChannel()
         if (!isNotificationScheduled(this)) {
@@ -86,17 +121,18 @@ class MainActivity : ComponentActivity() {
             // Notification is already scheduled
         }
 
-        PhotoDatabase.getAllPhotos(
-            application.applicationContext
-        ) {
-            withContext(Dispatchers.Main) {
-                backStack.add(Dest.OverviewScreen)
-                backStack.remove(Dest.LoadingScreen)
-
-            }
-        }
         setContent {
             backStack = remember { mutableStateListOf(Dest.LoadingScreen) }
+
+            PhotoDatabase.getAllPhotos(
+                application.applicationContext
+            ) {
+                withContext(Dispatchers.Main) {
+                    backStack.add(Dest.OverviewScreen)
+                    backStack.remove(Dest.LoadingScreen)
+
+                }
+            }
 
             FotoTriageTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
@@ -144,15 +180,23 @@ class MainActivity : ComponentActivity() {
                                     PhotoTriageViewModel.Companion.PhotoTriageViewModelFactory(
                                         key.year,
                                         key.month,
-                                        key.showAllPhotos
-                                    ) {
-                                        backStack.add(
-                                            Dest.TriageFinished(
-                                                key.year,
-                                                key.month
+                                        key.showAllPhotos,
+                                        onLastPhotoReached = {
+                                            backStack.add(
+                                                Dest.TriageFinished(
+                                                    key.year,
+                                                    key.month
+                                                )
                                             )
-                                        )
-                                    }
+                                        },
+                                        deletePhoto = {
+                                            PhotoDatabase.deleteFile(
+                                                applicationContext,
+                                                it.fileName,
+                                                it.filePath
+                                            )
+                                        }
+                                    )
                                 val photoTriageViewModel: PhotoTriageViewModel =
                                     viewModel(factory = factory)
 

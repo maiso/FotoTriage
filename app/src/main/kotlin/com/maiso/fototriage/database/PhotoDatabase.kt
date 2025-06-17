@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore.Images
 import android.util.Log
+import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Month
 import java.time.Year
@@ -184,6 +186,42 @@ object PhotoDatabase {
         }
     }
 
+    fun deleteFile(context: Context, fileName: String, path: String) {
+        val target = File(path)
+        if (target.isDirectory) {
+            toast(context, "Target is a directory, not deleting: $path")
+            return
+        }
+
+        if (target.exists()) {
+            try {
+                val deleted: Boolean = target.delete()
+                if (deleted) {
+                    _photos.update { photos ->
+                        photos.filterNot {
+                            it.filePath == path
+                        }
+                    }
+                    toast(context, "$fileName deleted successfully")
+                } else {
+                    toast(context, "Failed  to delete $fileName")
+                }
+            } catch (e: SecurityException) {
+                toast(context, "SecurityException deleting file:\n${e.message}")
+            } catch (e: Exception) {
+                toast(context, "Error deleting file:\n${e.localizedMessage}")
+            }
+        } else {
+            // file not found
+            toast(context, "$fileName not found on storage")
+        }
+    }
+
+    private fun toast(context: Context, message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+}
+
 //    private fun preCacheImages(photos: List<Uri>) {
 //
 //        coroutineScope.launch {
@@ -207,4 +245,4 @@ object PhotoDatabase {
 //            }
 //        }
 //    }
-}
+//}

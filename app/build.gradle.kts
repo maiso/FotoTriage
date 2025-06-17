@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.maiso.fototriage"
-        minSdk = 26
-        targetSdk = 35
+        minSdk = 30
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
