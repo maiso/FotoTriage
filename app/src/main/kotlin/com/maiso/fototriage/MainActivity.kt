@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -34,7 +35,10 @@ import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.database.PhotoDatabase
+import com.maiso.fototriage.export.ExportScreen
+import com.maiso.fototriage.export.ExportScreenViewModel
 import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewScreen
 import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewViewModel
 import com.maiso.fototriage.screens.loading.LoadingScreen
@@ -71,18 +75,24 @@ sealed interface Dest {
         val month: Month
     )
 
+    data object ExportScreen
+
 }
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var backStack: SnapshotStateList<Any>
+    private lateinit var usbFileCopier: USBFileCopier
+    private lateinit var usbDirectoryPickerLauncher: ActivityResultLauncher<Intent>
+
+    private var favoritePhotos: List<Photo> = emptyList()
 
     // Launcher to take user to the “All files access” page for *this* app
     private val manageAllFilesLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             // We come back here after the user toggles the switch
             if (Environment.isExternalStorageManager()) {
-                Log.i("MVDB", "Manage all files permission granted")
+                Log.i("FotoTriage", "Manage all files permission granted")
             } else {
                 // permission still not granted; inform the user or retry
                 Toast.makeText(applicationContext, "Permission not granted", Toast.LENGTH_LONG)
@@ -105,11 +115,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        usbFileCopier = USBFileCopier(this)
+
         checkPermission()
         enableEdgeToEdge()
 
         if (hasManageAllFilesPermission()) {
-            Log.i("MVDB", "Manage all files permission granted")
+            Log.i("FotoTriage", "Manage all files permission granted")
         } else {
             requestManageAllFilesPermission()
         }
@@ -120,6 +132,24 @@ class MainActivity : ComponentActivity() {
         } else {
             // Notification is already scheduled
         }
+
+        usbDirectoryPickerLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+
+                if (result.resultCode == RESULT_OK) {
+                    val uri = result.data?.data
+                    if (uri != null) {
+                        // Copy files to USB and monitor progress
+                        usbFileCopier.copyPhotosToUsb(uri, favoritePhotos)
+                    } else {
+                        Toast.makeText(
+                            applicationContext,
+                            "Something went wrong",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
 
         setContent {
             backStack = remember { mutableStateListOf(Dest.LoadingScreen) }
@@ -239,7 +269,28 @@ class MainActivity : ComponentActivity() {
 
                                 val uiState by favoriteOverviewViewModel.uiState.collectAsState()
 
-                                FavoriteOverviewScreen(uiState)
+                                FavoriteOverviewScreen(
+                                    uiState, Modifier
+                                ) {
+                                    with(favoriteOverviewViewModel.uiState.value) {
+                                        openUsbDirectoryPicker(photos)
+                                    }
+                                    backStack.add(Dest.ExportScreen)
+                                }
+                            }
+                            entry<Dest.ExportScreen> {
+                                val factory =
+                                    ExportScreenViewModel.Companion.ExportScreenViewModelFactory(
+                                        usbFileCopier,
+                                    )
+                                val exportScreenViewModel: ExportScreenViewModel =
+                                    viewModel(factory = factory)
+
+                                val uiState by exportScreenViewModel.uiState.collectAsState()
+
+                                ExportScreen(uiState, Modifier) {
+                                    backStack.remove(Dest.ExportScreen)
+                                }
                             }
                         }
                     )
@@ -248,6 +299,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun openUsbDirectoryPicker(photos: List<Photo>) {
+        favoritePhotos = photos
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        usbDirectoryPickerLauncher.launch(intent)
+    }
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -255,14 +311,14 @@ class MainActivity : ComponentActivity() {
                 // Permission is granted, you can now access the photos
             } else {
                 // Permission denied
-                Log.e("MVDB", "Permission denied")
+                Log.e("FotoTriage", "Permission denied")
             }
         }
 
     private fun checkPermission() {
         val permission =
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-        Log.i("MVDB", "permissions: $permission")
+        Log.i("FotoTriage", "permissions: $permission")
 
         when {
             ContextCompat.checkSelfPermission(

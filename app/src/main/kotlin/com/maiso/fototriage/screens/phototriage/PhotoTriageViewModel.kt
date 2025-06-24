@@ -49,7 +49,7 @@ class PhotoTriageViewModel(
     }
 
     fun onDeletePhoto(photo: Photo) {
-        Log.i("MVDB", "Delete photo $photo")
+        Log.i("FotoTriage", "Delete photo $photo")
         deletePhoto(photo)
     }
 

@@ -53,7 +53,6 @@ import coil3.request.ImageRequest
 import com.maiso.fototriage.composables.LongPressButton
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
-import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -175,12 +174,6 @@ fun PhotoTriage(
                     .height(100.dp)
                     .clickable {
                         onFavoritePhoto(uiState.photos[pagerState.currentPage])
-
-                        if (pagerState.currentPage < uiState.photos.size - 1) {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1) // Animate to the next page
-                            }
-                        }
                     }
                     .background(Color.Magenta.copy(alpha = 0.4f), shape = CircleShape),
             ) {
@@ -204,15 +197,7 @@ fun PhotoTriage(
                     .weight(1f)
                     .height(100.dp)
                     .clickable {
-
                         onTriagedPhoto(uiState.photos[pagerState.currentPage])
-
-                        if (pagerState.currentPage < uiState.photos.size - 1) {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1) // Animate to the next page
-                            }
-                        }
-
                     }
                     .background(Color.Green.copy(alpha = 0.4f), shape = CircleShape),
             ) {

@@ -66,6 +66,13 @@ object PhotoDatabase {
 
         _photos.value = emptyList()
 
+        databaseHelper.getAllData().let {
+            Log.d("FotoTriage", "Db entires: ${it.size}")
+            it.forEach {
+                Log.d("FotoTriage", "Db Entry: $it")
+            }
+        }
+
         coroutineScope.launch {
             val projection = arrayOf(
                 Images.Media._ID,
@@ -107,7 +114,7 @@ object PhotoDatabase {
                     val fileName = cursor.getString(nameColumn)
 
                     Log.i(
-                        "MVDB",
+                        "FotoTriage",
                         "Photo ID:$id " +
                                 "URI: $uri" +
                                 "NAME:${fileName} " +
@@ -137,7 +144,7 @@ object PhotoDatabase {
                     //TODO Check for any files in database but not on device.
                 }
             }
-            Log.i("MVDB", "Got ${_photos.value.size} photos")
+            Log.i("FotoTriage", "Got ${_photos.value.size} photos")
 
             databaseHelper.cleanUpDatabase(_photos.value.map { it.fileName })
             onFinished()
@@ -232,11 +239,11 @@ object PhotoDatabase {
 //                        onSuccess = {
 //                            // Handle successful image loading
 //                            // You can log or perform any action with the loaded drawable
-//                            Log.i("MVDB", "Image loaded successfully: $uri")
+//                            Log.i("FotoTriage", "Image loaded successfully: $uri")
 //                        },
 //                        onError = {
 //                            // Handle error in loading image
-//                            Log.i("MVDB", "Error loading image: $uri")
+//                            Log.i("FotoTriage", "Error loading image: $uri")
 //                        }
 //                    )
 //                    .build()

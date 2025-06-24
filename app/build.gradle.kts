@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.maiso.fototriage"
-        minSdk = 30
+        minSdk = 33
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.documentfile)
 
 
     testImplementation(libs.junit)

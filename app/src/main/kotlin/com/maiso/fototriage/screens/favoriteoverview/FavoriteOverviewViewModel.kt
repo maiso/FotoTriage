@@ -14,13 +14,14 @@ import java.time.Year
 
 data class FavoriteOverviewUiState(
     val photos: List<Photo> = emptyList(),
+    val year: Year,
 )
 
 class FavoriteOverviewViewModel(
     private val year: Year,
 ) : ViewModel() {
     val uiState = MutableStateFlow(
-        FavoriteOverviewUiState()
+        FavoriteOverviewUiState(year = year)
     )
 
     init {
