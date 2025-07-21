@@ -44,7 +44,7 @@ fun FavoriteOverviewScreen(
                 Text("Exporteer foto's naar Usb-Stick")
             }
         }
-        if (uiState.photos.isNotEmpty()) {
+        if (uiState.photos.isEmpty()) {
             Box(
                 contentAlignment = Alignment.Center
             ) {

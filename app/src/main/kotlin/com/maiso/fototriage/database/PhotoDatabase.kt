@@ -1,8 +1,10 @@
 package com.maiso.fototriage.database
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import android.provider.MediaStore.Images
 import android.util.Log
 import android.widget.Toast
@@ -60,9 +62,47 @@ object PhotoDatabase {
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
+    private fun getUniqueParentFolders(contentResolver: ContentResolver): Set<String> {
+        val parentFolders = mutableSetOf<String>() // Use a Set to store unique parent folder paths
+
+        // Define the projection to specify which columns to retrieve
+        val projection = arrayOf(Images.Media.DATA)
+
+        // Query the MediaStore for images
+        val cursor = contentResolver.query(
+            Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null
+        )
+
+        cursor?.use {
+            val columnIndex = it.getColumnIndexOrThrow(Images.Media.DATA)
+            while (it.moveToNext()) {
+                val imagePath = it.getString(columnIndex)
+                val parentFolder = File(imagePath).parent // Get the parent folder
+                if (parentFolder != null && parentFolder.contains("/DCIM/Camera")) {
+                    parentFolders.add(parentFolder) // Add to Set
+                }
+            }
+        }
+
+        return parentFolders
+    }
+
     fun getAllPhotos(context: Context, onFinished: suspend () -> Unit) {
 
-        databaseHelper = DatabaseHelper(context)
+        val imageLocation = getUniqueParentFolders(context.contentResolver)
+        if (imageLocation.size != 1) {
+            Log.e("FotoTriage", "Image locations: $imageLocation")
+
+            toast(context, "Images are in different locations. Not supported.")
+            return
+        }
+        Log.d("FotoTriage", "Image location: ${imageLocation.first()}")
+
+        databaseHelper = DatabaseHelper(context, imageLocation.first())
 
         _photos.value = emptyList()
 
@@ -116,7 +156,7 @@ object PhotoDatabase {
                     Log.i(
                         "FotoTriage",
                         "Photo ID:$id " +
-                                "URI: $uri" +
+                                "URI: $uri " +
                                 "NAME:${fileName} " +
                                 "PATH:${filePath}  " +
                                 "DATETAKEN:${cursor.getString(dateTakenColumn)} " +

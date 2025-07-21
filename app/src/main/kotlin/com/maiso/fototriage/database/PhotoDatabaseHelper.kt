@@ -6,19 +6,12 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import java.io.File
 
-class DatabaseHelper(context: Context) :
+class DatabaseHelper(context: Context, folderPath: String) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
-    companion object {
-        private const val DATABASE_NAME = "FotoTriage.db"
-        private const val DATABASE_VERSION = 1
-        private const val TABLE_NAME = "FotoTriage"
-        private const val COLUMN_FILENAME = "filename"
-        private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
-        private const val COLUMN_TRIAGED = "triaged"
-        private const val COLUMN_FAVORITE = "favorite"
-    }
+    private val databasePath: String = folderPath
 
     override fun onCreate(db: SQLiteDatabase) {
         val createTable = ("CREATE TABLE $TABLE_NAME ("
@@ -26,11 +19,29 @@ class DatabaseHelper(context: Context) :
                 + "$COLUMN_DATA_TAKEN_MILLIS INTEGER, "
                 + "$COLUMN_TRIAGED INTEGER,"
                 + "$COLUMN_FAVORITE INTEGER)") // Store favorite as INTEGER (0 or 1)
+        Log.d("FotoTriage", "DatabaseHelper.onCreate()")
+
         db.execSQL(createTable)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         error("onUpgrade(old=$oldVersion, new=$newVersion) not defined")
+    }
+
+    override fun getWritableDatabase(): SQLiteDatabase {
+        val dbFile = File(databasePath, DATABASE_NAME)
+        return SQLiteDatabase.openOrCreateDatabase(dbFile.path, null)
+    }
+
+    override fun getReadableDatabase(): SQLiteDatabase {
+        val dbFile = File(databasePath, DATABASE_NAME)
+        // Check if the database file exists
+        if (!dbFile.exists()) {
+            val df = getWritableDatabase()
+            onCreate(df)
+            df.close()
+        }
+        return SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
     }
 
     fun insertData(data: PhotoDataBaseEntry) {
@@ -133,6 +144,15 @@ class DatabaseHelper(context: Context) :
         db.close()
     }
 
+    companion object {
+        private const val DATABASE_NAME = "FotoTriage.db"
+        private const val DATABASE_VERSION = 1
+        private const val TABLE_NAME = "FotoTriage"
+        private const val COLUMN_FILENAME = "filename"
+        private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
+        private const val COLUMN_TRIAGED = "triaged"
+        private const val COLUMN_FAVORITE = "favorite"
+    }
 }
 
 data class PhotoDataBaseEntry(
