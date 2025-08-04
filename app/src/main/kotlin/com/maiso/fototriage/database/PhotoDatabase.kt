@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
-import android.provider.MediaStore
 import android.provider.MediaStore.Images
 import android.util.Log
 import android.widget.Toast
@@ -82,7 +81,7 @@ object PhotoDatabase {
             while (it.moveToNext()) {
                 val imagePath = it.getString(columnIndex)
                 val parentFolder = File(imagePath).parent // Get the parent folder
-                if (parentFolder != null && parentFolder.contains("/DCIM/Camera")) {
+                if (parentFolder != null && parentFolder.endsWith("/DCIM/Camera")) {
                     parentFolders.add(parentFolder) // Add to Set
                 }
             }

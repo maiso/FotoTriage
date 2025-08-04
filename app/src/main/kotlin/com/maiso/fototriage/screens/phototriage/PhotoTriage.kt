@@ -1,10 +1,10 @@
 package com.maiso.fototriage.screens.phototriage
 
 import android.content.res.Configuration
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -53,6 +57,7 @@ import coil3.request.ImageRequest
 import com.maiso.fototriage.composables.LongPressButton
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -63,24 +68,31 @@ fun PhotoTriage(
     onFavoritePhoto: (photo: Photo) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope() // Create a coroutine scope
     val pagerState = rememberPagerState(0) { uiState.photos.size }
-    var overlayVisible by remember { mutableStateOf(true) }
-    val alpha by animateFloatAsState(
-        targetValue = if (overlayVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 500) // Duration of the fade-out animation
-    )
+    val listState = rememberLazyListState() // Create a LazyListState
+    val coroutineScope = rememberCoroutineScope() // Coroutine scope for scrolling
 
     var scale by remember { mutableFloatStateOf(1f) } // Scale for zooming
     var offsetX by remember { mutableFloatStateOf(0f) } // X offset for panning
     var offsetY by remember { mutableFloatStateOf(0f) } // Y offset for panning
+    var currentPhoto by remember { mutableStateOf<Photo?>(null) }
 
     LaunchedEffect(pagerState.currentPage) {
         scale = 1f
         offsetX = 0f
         offsetY = 0f
-        overlayVisible = true
+
+        coroutineScope.launch {
+            val targetIndex = pagerState.currentPage - 1
+            if (targetIndex >= 0) {
+                listState.animateScrollToItem(targetIndex) // Shift left to center the current photo
+            }
+        }
     }
+
+    val screenWidth =
+        LocalWindowInfo.current.containerSize // LocalConfiguration.current.screenWidthDp // Get screen width in dp
+    val smallImageSize = (screenWidth.width * 0.045f).dp
 
     Column(
         modifier = modifier
@@ -93,16 +105,61 @@ fun PhotoTriage(
                 .weight(1.0f)
                 .padding(vertical = 10.dp)
                 .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        if (scale * zoom > 1) {
-                            scale *= zoom // Update scale based on pinch zoom
-                            if (zoom.toInt() >= 1.0) {
-                                offsetX += pan.x // Update X offset based on pan
-                                offsetY += pan.y // Update Y offset based on pan
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (scale > 1f) {
+                                // Reset scale and offsets on double-tap
+                                scale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
                             }
-                        } else {
-                            offsetX = 0f
-                            offsetY = 0f
+                        }
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = scale * zoom
+
+                        // Calculate new offsets
+                        val newOffsetX = offsetX + pan.x
+                        val newOffsetY = offsetY + pan.y
+
+                        // Get the size of the container and the image
+                        val containerWidth = size.width // Width of the container
+                        val containerHeight = size.height // Height of the container
+                        val imageWidth = containerWidth * scale // Width of the image after scaling
+                        val imageHeight =
+                            containerHeight * scale // Height of the image after scaling
+
+                        // Calculate the minimum scale to fit the image in the container
+                        val minScaleX = containerWidth / imageWidth
+                        val minScaleY = containerHeight / imageHeight
+                        val minScale = minOf(minScaleX, minScaleY)
+
+                        // Update scale only if within bounds
+                        scale = when {
+                            newScale < minScale -> minScale // Prevent zooming out too much
+                            else -> newScale // Valid scale
+                        }
+
+                        val extraWidthRight = (containerWidth - imageWidth) / 2
+                        val extraWidthLeft = (imageWidth - containerWidth) / 2
+
+                        // Boundary checks for X offset
+                        offsetX = when {
+                            newOffsetX < extraWidthRight -> extraWidthRight
+                            newOffsetX > extraWidthLeft -> extraWidthLeft
+                            else -> newOffsetX // Valid offset
+                        }
+
+                        val extraHeightTop = (containerHeight - imageHeight) / 2
+                        val extraHeightBottom = (imageHeight - containerHeight) / 2
+
+                        // Boundary checks for Y offset
+                        offsetY = when {
+                            newOffsetY < extraHeightTop -> extraHeightTop
+                            newOffsetY > extraHeightBottom -> extraHeightBottom
+                            else -> newOffsetY // Valid offset
                         }
                     }
                 }
@@ -133,6 +190,44 @@ fun PhotoTriage(
                 }
             }
         }
+        LazyRow(
+            state = listState, // Use the LazyListState
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Center // Center the items in the row
+        ) {
+            itemsIndexed(uiState.photos) { index, photo ->
+                val isCurrent =
+                    index == pagerState.currentPage // Check if the index matches the current page
+
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 1.dp) // Padding between images
+                        .border(
+                            width = if (isCurrent) 2.dp else 0.dp, // Outline only for the current image
+                            color = if (isCurrent) Color.LightGray else Color.Transparent, // Color for the outline
+                        )
+                        .clickable {
+                            // Update the current photo and pager state when a thumbnail is clicked
+                            coroutineScope.launch {
+                                pagerState.scrollToPage(index) // Change the current photo
+                            }
+                        }
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.uri)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(smallImageSize) // Keep the size consistent for all images
+
+                    )
+                }
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -33,7 +33,7 @@ fun LongPressButton(
             progress = 0f
             while (progress < 1f) {
                 delay(10) // Adjust the delay for smoother progress
-                progress += 0.01f // Adjust the increment for speed
+                progress += 0.02f // Adjust the increment for speed
             }
             onLongPress()
             isPressed = false
