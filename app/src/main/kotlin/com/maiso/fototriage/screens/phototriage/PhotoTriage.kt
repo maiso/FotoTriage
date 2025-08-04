@@ -2,8 +2,6 @@ package com.maiso.fototriage.screens.phototriage
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -12,20 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -48,13 +39,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.maiso.fototriage.composables.LongPressButton
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.launch
@@ -68,31 +57,19 @@ fun PhotoTriage(
     onFavoritePhoto: (photo: Photo) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val pagerState = rememberPagerState(0) { uiState.photos.size }
-    val listState = rememberLazyListState() // Create a LazyListState
     val coroutineScope = rememberCoroutineScope() // Coroutine scope for scrolling
+
+    val pagerState = rememberPagerState(0) { uiState.photos.size }
 
     var scale by remember { mutableFloatStateOf(1f) } // Scale for zooming
     var offsetX by remember { mutableFloatStateOf(0f) } // X offset for panning
     var offsetY by remember { mutableFloatStateOf(0f) } // Y offset for panning
-    var currentPhoto by remember { mutableStateOf<Photo?>(null) }
 
     LaunchedEffect(pagerState.currentPage) {
         scale = 1f
         offsetX = 0f
         offsetY = 0f
-
-        coroutineScope.launch {
-            val targetIndex = pagerState.currentPage - 1
-            if (targetIndex >= 0) {
-                listState.animateScrollToItem(targetIndex) // Shift left to center the current photo
-            }
-        }
     }
-
-    val screenWidth =
-        LocalWindowInfo.current.containerSize // LocalConfiguration.current.screenWidthDp // Get screen width in dp
-    val smallImageSize = (screenWidth.width * 0.045f).dp
 
     Column(
         modifier = modifier
@@ -190,126 +167,25 @@ fun PhotoTriage(
                 }
             }
         }
-        LazyRow(
-            state = listState, // Use the LazyListState
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.Center // Center the items in the row
-        ) {
-            itemsIndexed(uiState.photos) { index, photo ->
-                val isCurrent =
-                    index == pagerState.currentPage // Check if the index matches the current page
 
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 1.dp) // Padding between images
-                        .border(
-                            width = if (isCurrent) 2.dp else 0.dp, // Outline only for the current image
-                            color = if (isCurrent) Color.LightGray else Color.Transparent, // Color for the outline
-                        )
-                        .clickable {
-                            // Update the current photo and pager state when a thumbnail is clicked
-                            coroutineScope.launch {
-                                pagerState.scrollToPage(index) // Change the current photo
-                            }
-                        }
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(photo.uri)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(smallImageSize) // Keep the size consistent for all images
-
-                    )
-                }
+        PhotoThumbnailRow(
+            uiState.photos,
+            pagerState.currentPage,
+        ) { index ->
+            // Update the current photo and pager state when a thumbnail is clicked
+            coroutineScope.launch {
+                pagerState.scrollToPage(index) // Change the current photo
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            LongPressButton(
-                onLongPress = { onDeletePhoto(uiState.photos[pagerState.currentPage]) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-                    .background(
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
-                        shape = CircleShape
-                    ),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            MaterialTheme.colorScheme.error,
-                            shape = CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onError
-                    )
-                }
-            }
+        ButtonsRow(
+            uiState.photos,
+            pagerState.currentPage,
+            onDeletePhoto,
+            onTriagedPhoto,
+            onFavoritePhoto,
+        )
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-                    .clickable {
-                        onFavoritePhoto(uiState.photos[pagerState.currentPage])
-                    }
-                    .background(Color.Magenta.copy(alpha = 0.4f), shape = CircleShape),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.Magenta, shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Favorite,
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
-                }
-            }
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(100.dp)
-                    .clickable {
-                        onTriagedPhoto(uiState.photos[pagerState.currentPage])
-                    }
-                    .background(Color.Green.copy(alpha = 0.4f), shape = CircleShape),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.Green, shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
-                }
-            }
-        }
     }
 }
 
