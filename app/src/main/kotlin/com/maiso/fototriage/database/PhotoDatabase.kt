@@ -107,9 +107,9 @@ object PhotoDatabase {
 
         databaseHelper.getAllData().let {
             Log.d("FotoTriage", "Db entires: ${it.size}")
-            it.forEach {
-                Log.d("FotoTriage", "Db Entry: $it")
-            }
+//            it.forEach {
+//                Log.d("FotoTriage", "Db Entry: $it")
+//            }
         }
 
         coroutineScope.launch {
@@ -147,20 +147,20 @@ object PhotoDatabase {
                     val dateTakenMillis = cursor.getLong(dateTakenColumn)
                     val dateTaken = Date(dateTakenMillis)
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                    val formattedDate = dateFormat.format(dateTaken)
+                    dateFormat.format(dateTaken)
 
                     val filePath = cursor.getString(dataColumn)
                     val fileName = cursor.getString(nameColumn)
 
-                    Log.i(
-                        "FotoTriage",
-                        "Photo ID:$id " +
-                                "URI: $uri " +
-                                "NAME:${fileName} " +
-                                "PATH:${filePath}  " +
-                                "DATETAKEN:${cursor.getString(dateTakenColumn)} " +
-                                "FORMATTED:$formattedDate"
-                    )
+//                    Log.i(
+//                        "FotoTriage",
+//                        "Photo ID:$id " +
+//                                "URI: $uri " +
+//                                "NAME:${fileName} " +
+//                                "PATH:${filePath}  " +
+//                                "DATETAKEN:${cursor.getString(dateTakenColumn)} " +
+//                                "FORMATTED:$formattedDate"
+//                    )
 
 
                     val triaged = databaseHelper.addOrRetrieveEntry(fileName, dateTakenMillis)
