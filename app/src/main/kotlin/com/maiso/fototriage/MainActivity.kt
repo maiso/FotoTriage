@@ -237,7 +237,7 @@ class MainActivity : ComponentActivity() {
                                     onTriagedPhoto = photoTriageViewModel::onTriagedPhoto,
                                     onFavoritePhoto = photoTriageViewModel::onFavoritePhoto,
                                     onDeletePhoto = photoTriageViewModel::onDeletePhoto,
-                                    modifier = Modifier.padding(padding),
+                                    onShowTriagedChange = photoTriageViewModel::onHideTriaged,
                                 )
                             }
                             entry<Dest.TriageFinished> { key ->
@@ -351,7 +351,7 @@ class MainActivity : ComponentActivity() {
 
 
     private fun scheduleMonthlyNotification(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = context.getSystemService(ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, NotificationReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context,

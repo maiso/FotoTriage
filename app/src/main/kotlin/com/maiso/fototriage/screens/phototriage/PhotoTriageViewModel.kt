@@ -8,14 +8,15 @@ import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.database.PhotoDatabase
 import com.maiso.fototriage.database.filterByMonth
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import java.time.Month
 import java.time.Year
 
 data class PhotoTriageUiState(
     val photos: List<Photo> = emptyList(),
+    val showTriaged: Boolean
 )
 
 class PhotoTriageViewModel(
@@ -27,22 +28,26 @@ class PhotoTriageViewModel(
 ) : ViewModel() {
 
     val uiState = MutableStateFlow(
-        PhotoTriageUiState()
+        PhotoTriageUiState(showTriaged = showAllPhotos)
     )
 
+    private val showTriaged = MutableStateFlow(showAllPhotos)
     init {
-        PhotoDatabase.photos.onEach { allPhotos ->
+        combine(PhotoDatabase.photos, showTriaged) { allPhotos, showTriaged ->
             allPhotos.filterByMonth(year, month).let { filteredPhotos ->
-                if (filteredPhotos.isEmpty() || (!showAllPhotos && !filteredPhotos.any { !it.triaged && !it.favorite })) {
+                if (filteredPhotos.isEmpty() || (!showTriaged && !filteredPhotos.any { !it.triaged && !it.favorite })) {
                     onLastPhotoReached()
                 } else {
                     uiState.update {
                         it.copy(
                             photos =
-                                if (!showAllPhotos) filteredPhotos.filter { !it.favorite && !it.triaged } else filteredPhotos
+                                if (!showTriaged) filteredPhotos.filter { !it.favorite && !it.triaged } else filteredPhotos
                         )
                     }
                 }
+            }
+            uiState.update {
+                it.copy(showTriaged = showTriaged)
             }
         }.launchIn(viewModelScope)
 
@@ -61,6 +66,9 @@ class PhotoTriageViewModel(
         PhotoDatabase.markPhotoFavorite(photo)
     }
 
+    fun onHideTriaged(hide: Boolean) {
+        showTriaged.value = hide
+    }
     companion object {
         class PhotoTriageViewModelFactory(
             private val year: Year,
