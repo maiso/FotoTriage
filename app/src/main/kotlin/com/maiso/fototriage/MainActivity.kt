@@ -31,9 +31,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.entry
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.database.PhotoDatabase
@@ -171,7 +170,7 @@ class MainActivity : ComponentActivity() {
                         backStack = backStack,
                         onBack = { backStack.removeLastOrNull() },
                         entryDecorators = listOf(
-                            rememberSavedStateNavEntryDecorator(),
+                            rememberSaveableStateHolderNavEntryDecorator(),
                             rememberViewModelStoreNavEntryDecorator(),
                         ),
                         entryProvider = entryProvider {
