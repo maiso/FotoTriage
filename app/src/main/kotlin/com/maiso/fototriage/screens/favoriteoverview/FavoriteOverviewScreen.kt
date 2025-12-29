@@ -21,6 +21,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.maiso.fototriage.composables.LongPressButton
+import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import java.time.Year
 
@@ -28,7 +30,8 @@ import java.time.Year
 fun FavoriteOverviewScreen(
     uiState: FavoriteOverviewUiState,
     modifier: Modifier = Modifier,
-    openExportPanel: () -> Unit
+    openExportPanel: () -> Unit,
+    unfavoritePhoto: (Photo) -> Unit,
 ) {
     Column {
         Row(
@@ -58,19 +61,23 @@ fun FavoriteOverviewScreen(
             ) {
                 items(uiState.photos.size) { index ->
                     val imageUrl = uiState.photos[index].uri
-                    Box(
+                    LongPressButton(
+                        content = {
+
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                alignment = Alignment.Center,
+                                contentScale = ContentScale.Crop
+                            )
+
+                        },
+                        onLongPress = { unfavoritePhoto(uiState.photos[index]) },
                         modifier = Modifier
                             .aspectRatio(1f) // Ensures the height and width are the same
-                            .padding(4.dp) // Padding between items
-                    ) {
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            alignment = Alignment.Center,
-                            contentScale = ContentScale.Crop
-                        )
-                    }
+                            .padding(4.dp) // Padding between items,
+                    )
                 }
             }
         }
@@ -82,6 +89,6 @@ fun FavoriteOverviewScreen(
 @Composable
 fun FavoriteOverviewPreview() {
     FotoTriageTheme {
-        FavoriteOverviewScreen(FavoriteOverviewUiState(year = Year.of(2025)), Modifier, {})
+        FavoriteOverviewScreen(FavoriteOverviewUiState(year = Year.of(2025)), Modifier, {}, {})
     }
 }

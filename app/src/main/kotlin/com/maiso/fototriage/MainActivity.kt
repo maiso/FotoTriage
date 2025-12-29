@@ -269,13 +269,19 @@ class MainActivity : ComponentActivity() {
                                 val uiState by favoriteOverviewViewModel.uiState.collectAsState()
 
                                 FavoriteOverviewScreen(
-                                    uiState, Modifier
-                                ) {
-                                    with(favoriteOverviewViewModel.uiState.value) {
-                                        openUsbDirectoryPicker(photos)
+                                    uiState,
+                                    Modifier,
+                                    openExportPanel =
+                                        {
+                                            with(favoriteOverviewViewModel.uiState.value) {
+                                                openUsbDirectoryPicker(photos)
+                                            }
+                                            backStack.add(Dest.ExportScreen)
+                                        },
+                                    unfavoritePhoto = { photo ->
+                                        favoriteOverviewViewModel.unfavorite(photo)
                                     }
-                                    backStack.add(Dest.ExportScreen)
-                                }
+                                )
                             }
                             entry<Dest.ExportScreen> {
                                 val factory =

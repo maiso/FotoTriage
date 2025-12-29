@@ -20,6 +20,7 @@ data class FavoriteOverviewUiState(
 class FavoriteOverviewViewModel(
     private val year: Year,
 ) : ViewModel() {
+
     val uiState = MutableStateFlow(
         FavoriteOverviewUiState(year = year)
     )
@@ -30,6 +31,10 @@ class FavoriteOverviewViewModel(
                 it.copy(photos = photos.filterByYear(year).filter { it.favorite })
             }
         }.launchIn(viewModelScope)
+    }
+
+    fun unfavorite(photo: Photo) {
+        PhotoDatabase.markPhotoTriaged(photo, forceTriaged = true, unfavorite = true)
     }
 
     companion object {

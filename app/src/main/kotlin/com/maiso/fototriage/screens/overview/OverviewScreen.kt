@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.HorizontalDivider
@@ -32,9 +34,11 @@ fun OverviewScreen(
     onYearClick: (Year) -> Unit,
     onMonthClick: (Year, Month) -> Unit
 ) {
-    LazyColumn(modifier = modifier
-        .fillMaxSize()
-        .padding(horizontal = 5.dp)) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 5.dp)
+    ) {
         uiState.yearPhotos.forEach { yearUiState ->
             item {
                 HorizontalDivider(thickness = 1.dp, color = Color.Gray)
@@ -54,6 +58,13 @@ fun OverviewScreen(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     TextIcon("${yearUiState.nrOfPhoto}", Icons.Outlined.Image)
+                    TextIcon("${yearUiState.nrOfUntriaged}", Icons.AutoMirrored.Filled.HelpOutline)
+                    TextIcon(
+                        "${yearUiState.nrOfTriaged}",
+                        Icons.Outlined.CheckCircle,
+                        Color.Green.copy(alpha = 0.5f)
+                    )
+
 
                     TextIcon(
                         "${yearUiState.nrOfFavorites}",
@@ -71,6 +82,7 @@ fun OverviewScreen(
                                 Modifier.background(Color.Green.copy(alpha = 0.5f))
                             } else Modifier,
                             month = month.month.toDutchString(),
+                            nrOfPhoto = month.nrOfPhoto,
                             untriaged = month.nrOfUntriaged,
                             triaged = month.nrOfTriaged,
                             favorites = month.nrOfFavorites,
@@ -90,8 +102,8 @@ fun OverviewPanelPreview() {
         OverviewScreen(
             OverviewScreenUiState(
                 yearPhotos = listOf(
-                    YearUiState(Year.of(2025), 785, 10),
-                    YearUiState(Year.of(2024), 456, 15)
+                    YearUiState(Year.of(2025), 785, 10,  14, 123),
+                    YearUiState(Year.of(2024), 456, 15, 42, 321)
                 ),
                 monthPhotos = listOf(
                     MonthUiState(Year.of(2025), Month.JANUARY, 123, 100, 21, 2),

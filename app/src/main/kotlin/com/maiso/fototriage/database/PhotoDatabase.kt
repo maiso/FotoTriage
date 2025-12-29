@@ -191,20 +191,27 @@ object PhotoDatabase {
         }
     }
 
-    fun markPhotoTriaged(photo: Photo) {
+    /**
+     *
+     * @param forceTriaged if true will mark photo as triaged regardless of previous state.
+     * @param unfavorite if true will mark photo as non-favorite regardless of previous state.
+     */
+    fun markPhotoTriaged(photo: Photo, forceTriaged: Boolean = false, unfavorite: Boolean = false) {
+        val triaged = if(forceTriaged) true else !photo.triaged
+        val favorite = if (unfavorite) false else photo.favorite
         databaseHelper.insertData(
             PhotoDataBaseEntry(
                 fileName = photo.fileName,
                 dateTakenMillis = photo.dateTakenMillis,
-                triaged = !photo.triaged,
-                favorite = photo.favorite,
+                triaged = triaged,
+                favorite = favorite,
             )
         )
         //TODO check result
         _photos.update { photos ->
             photos.map {
                 if (it.fileName == photo.fileName) {
-                    it.copy(triaged = !photo.triaged)
+                    it.copy(triaged = triaged, favorite = favorite)
                 } else {
                     it
                 }
@@ -248,7 +255,6 @@ object PhotoDatabase {
                             it.filePath == path
                         }
                     }
-                    toast(context, "$fileName deleted successfully")
                 } else {
                     toast(context, "Failed  to delete $fileName")
                 }

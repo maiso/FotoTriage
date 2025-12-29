@@ -24,7 +24,9 @@ data class OverviewScreenUiState(
 data class YearUiState(
     val year: Year,
     val nrOfPhoto: Int,
-    val nrOfFavorites: Int
+    val nrOfFavorites: Int,
+    val nrOfTriaged: Int,
+    val nrOfUntriaged: Int
 )
 
 data class MonthUiState(
@@ -49,10 +51,20 @@ class OverviewScreenViewModel : ViewModel() {
                 val photosOfTheYear = photos.filterByYear(year)
                 val nrOfPhotosPerYear = photosOfTheYear.size
                 val nrOfFavorites: Int = photosOfTheYear.count { it.favorite }
+                val nrOfUntriaged: Int = photosOfTheYear.count { !it.triaged && !it.favorite }
+                val nrOfTriaged: Int = photosOfTheYear.count { it.triaged && !it.favorite }
                 uiState.update {
                     it.copy(
                         yearPhotos = it.yearPhotos.toMutableList().apply {
-                            add(YearUiState(year, nrOfPhotosPerYear, nrOfFavorites))
+                            add(
+                                YearUiState(
+                                    year = year,
+                                    nrOfPhoto = nrOfPhotosPerYear,
+                                    nrOfFavorites = nrOfFavorites,
+                                    nrOfTriaged = nrOfTriaged,
+                                    nrOfUntriaged = nrOfUntriaged
+                                )
+                            )
                         }
                     )
                 }

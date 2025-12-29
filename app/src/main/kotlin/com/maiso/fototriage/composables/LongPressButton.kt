@@ -55,6 +55,8 @@ fun LongPressButton(
                 )
             }
     ) {
+        content()
+
         // Draw the filling circle
         Canvas(modifier = Modifier.size(52.dp)) {
 //            drawCircle(
@@ -72,7 +74,7 @@ fun LongPressButton(
             )
         }
 
-        content()
+
     }
 }
 

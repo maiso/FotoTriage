@@ -59,7 +59,7 @@ class PhotoTriageViewModel(
     }
 
     fun onTriagedPhoto(photo: Photo) {
-        PhotoDatabase.markPhotoTriaged(photo)
+        PhotoDatabase.markPhotoTriaged(photo, unfavorite = true)
     }
 
     fun onFavoritePhoto(photo: Photo) {
