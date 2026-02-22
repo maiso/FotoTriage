@@ -59,11 +59,6 @@ fun LongPressButton(
 
         // Draw the filling circle
         Canvas(modifier = Modifier.size(52.dp)) {
-//            drawCircle(
-//                color = Color.Gray,
-//                radius = size.minDimension / 2,
-//                style = Stroke(width = 8f)
-//            )
             drawArc(
                 color = Color.Red,
                 startAngle = -90f,
