@@ -63,7 +63,6 @@ fun FavoriteOverviewScreen(
                     val imageUrl = uiState.photos[index].uri
                     LongPressButton(
                         content = {
-
                             AsyncImage(
                                 model = imageUrl,
                                 contentDescription = null,
@@ -71,7 +70,6 @@ fun FavoriteOverviewScreen(
                                 alignment = Alignment.Center,
                                 contentScale = ContentScale.Crop
                             )
-
                         },
                         onLongPress = { unfavoritePhoto(uiState.photos[index]) },
                         modifier = Modifier

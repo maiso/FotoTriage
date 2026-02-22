@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -66,8 +66,8 @@ fun MonthRow(
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.weight(1f))
-        TextIcon("$nrOfPhoto", Icons.Outlined.Image)
-        TextIcon("$untriaged", Icons.AutoMirrored.Filled.HelpOutline)
+        TextIcon("$nrOfPhoto", Icons.Outlined.AccountCircle)
+        TextIcon("$untriaged", Icons.Filled.Warning)
         TextIcon("$triaged", Icons.Outlined.CheckCircle, Color.Green.copy(alpha = 0.5f))
         TextIcon("$favorites", Icons.Outlined.Favorite, Color.Magenta.copy(alpha = 0.5f))
     }

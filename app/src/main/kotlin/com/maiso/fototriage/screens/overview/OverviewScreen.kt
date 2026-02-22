@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,8 +57,8 @@ fun OverviewScreen(
                         fontSize = 24.sp
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    TextIcon("${yearUiState.nrOfPhoto}", Icons.Outlined.Image)
-                    TextIcon("${yearUiState.nrOfUntriaged}", Icons.AutoMirrored.Filled.HelpOutline)
+                    TextIcon("${yearUiState.nrOfPhoto}", Icons.Outlined.AccountCircle)
+                    TextIcon("${yearUiState.nrOfUntriaged}", Icons.Filled.Warning)
                     TextIcon(
                         "${yearUiState.nrOfTriaged}",
                         Icons.Outlined.CheckCircle,
