@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -29,105 +28,91 @@ fun PhotoPager(
     modifier: Modifier = Modifier,
     getPhoto: (index: Int) -> Photo,
 ) {
-    var scale by remember { mutableFloatStateOf(1f) } // Scale for zooming
-    var offsetX by remember { mutableFloatStateOf(0f) } // X offset for panning
-    var offsetY by remember { mutableFloatStateOf(0f) } // Y offset for panning
-
-    LaunchedEffect(pagerState.currentPage) {
-        scale = 1f
-        offsetX = 0f
-        offsetY = 0f
-    }
-
     HorizontalPager(
         state = pagerState,
-        modifier = modifier
-            .padding(vertical = 10.dp)
+        modifier = modifier.padding(vertical = 10.dp),
+    ) { page ->
+        val photo = getPhoto(page)
+        val isCurrentPage = page == pagerState.currentPage
+
+        if (photo.isVideo) {
+            VideoPage(photo = photo, isCurrentPage = isCurrentPage)
+        } else {
+            PhotoPage(photo = photo)
+        }
+    }
+}
+
+@Composable
+private fun PhotoPage(photo: Photo) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onDoubleTap = {
-                        if (scale > 1f) {
-                            // Reset scale and offsets on double-tap
-                            scale = 1f
-                            offsetX = 0f
-                            offsetY = 0f
-                        }
-                    }
+                    onDoubleTap = { scale = 1f; offsetX = 0f; offsetY = 0f }
                 )
             }
             .pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoom, _ ->
                     val newScale = scale * zoom
-
-                    // Calculate new offsets
                     val newOffsetX = offsetX + pan.x
                     val newOffsetY = offsetY + pan.y
 
-                    // Get the size of the container and the image
-                    val containerWidth = size.width // Width of the container
-                    val containerHeight = size.height // Height of the container
-                    val imageWidth = containerWidth * scale // Width of the image after scaling
-                    val imageHeight =
-                        containerHeight * scale // Height of the image after scaling
+                    val containerWidth = size.width.toFloat()
+                    val containerHeight = size.height.toFloat()
+                    val imageWidth = containerWidth * scale
+                    val imageHeight = containerHeight * scale
 
-                    // Calculate the minimum scale to fit the image in the container
                     val minScaleX = containerWidth / imageWidth
                     val minScaleY = containerHeight / imageHeight
                     val minScale = minOf(minScaleX, minScaleY)
 
-                    // Update scale only if within bounds
-                    scale = when {
-                        newScale < minScale -> minScale // Prevent zooming out too much
-                        else -> newScale // Valid scale
-                    }
+                    scale = if (newScale < minScale) minScale else newScale
 
                     val extraWidthRight = (containerWidth - imageWidth) / 2
                     val extraWidthLeft = (imageWidth - containerWidth) / 2
-
-                    // Boundary checks for X offset
                     offsetX = when {
                         newOffsetX < extraWidthRight -> extraWidthRight
                         newOffsetX > extraWidthLeft -> extraWidthLeft
-                        else -> newOffsetX // Valid offset
+                        else -> newOffsetX
                     }
 
                     val extraHeightTop = (containerHeight - imageHeight) / 2
                     val extraHeightBottom = (imageHeight - containerHeight) / 2
-
-                    // Boundary checks for Y offset
                     offsetY = when {
                         newOffsetY < extraHeightTop -> extraHeightTop
                         newOffsetY > extraHeightBottom -> extraHeightBottom
-                        else -> newOffsetY // Valid offset
+                        else -> newOffsetY
                     }
                 }
             }
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offsetX,
-                translationY = offsetY
-            )
-    ) { page ->
-        val photo = getPhoto(page)
-        Box(
+            .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offsetX, translationY = offsetY),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(photo.uri)
+                .build(),
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(photo.uri)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize(),
-            )
-
-            if (photo.favorite) {
-                FavoritePill()
-            } else if (photo.triaged) {
-                TriagedPill()
-            }
-        }
+        )
+        if (photo.favorite) FavoritePill() else if (photo.triaged) TriagedPill()
     }
+}
+
+@Composable
+private fun VideoPage(photo: Photo, isCurrentPage: Boolean) {
+    VideoPlayer(
+        uri = photo.uri,
+        isCurrentPage = isCurrentPage,
+        modifier = Modifier.fillMaxSize(),
+        overlay = {
+            if (photo.favorite) FavoritePill() else if (photo.triaged) TriagedPill()
+        },
+    )
 }

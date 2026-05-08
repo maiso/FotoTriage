@@ -341,32 +341,23 @@ class MainActivity : ComponentActivity() {
         usbDirectoryPickerLauncher.launch(intent)
     }
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // Permission is granted, you can now access the photos
-            } else {
-                Log.e("FotoTriage", "Permission denied")
+    private val requestPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.forEach { (permission, granted) ->
+                if (!granted) Log.e("FotoTriage", "Permission denied: $permission")
             }
         }
 
     private fun checkPermission() {
-        val permission =
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-        Log.i("FotoTriage", "permissions: $permission")
-
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // You can use the permission
-            }
-
-            else -> {
-                requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
-            }
-        }
+        val toRequest = listOfNotNull(
+            Manifest.permission.READ_MEDIA_IMAGES.takeIf {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            },
+            Manifest.permission.READ_MEDIA_VIDEO.takeIf {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            },
+        )
+        if (toRequest.isNotEmpty()) requestPermissionsLauncher.launch(toRequest.toTypedArray())
     }
 
     private fun createNotificationChannel() {

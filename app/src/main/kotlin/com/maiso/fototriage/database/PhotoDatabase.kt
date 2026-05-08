@@ -4,7 +4,10 @@ import android.content.ContentUris
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
+import android.provider.MediaStore
 import android.provider.MediaStore.Images
+import android.provider.MediaStore.Video
+
 import android.util.Log
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -16,12 +19,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
-import java.text.SimpleDateFormat
 import java.time.Month
 import java.time.Year
 import java.util.Calendar
 import java.util.Date
-import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 
@@ -33,6 +34,7 @@ data class Photo(
     val dateTakenMillis: Long,
     val triaged: Boolean,
     val favorite: Boolean,
+    val isVideo: Boolean = false,
 )
 
 fun List<Photo>.filterByYear(year: Year): List<Photo> = this.filter { photo ->
@@ -43,7 +45,7 @@ fun List<Photo>.filterByYear(year: Year): List<Photo> = this.filter { photo ->
 fun List<Photo>.filterByMonth(year: Year, month: Month): List<Photo> = this.filter { photo ->
     val calendar = Calendar.getInstance().apply { time = photo.dateTaken }
     calendar.get(Calendar.YEAR) == year.value &&
-            (calendar.get(Calendar.MONTH) + 1) == month.value // Month is 0-based
+            (calendar.get(Calendar.MONTH) + 1) == month.value
 }
 
 fun List<Photo>.findUniqueYears(): Set<Year> {
@@ -82,10 +84,9 @@ object PhotoDatabase {
         progress.value = null
 
         coroutineScope.launch {
-            // Collect all image files in the selected folders and ensure MediaStore knows about them
             val filesToScan = folderPaths.flatMap { folder ->
                 File(folder).listFiles()
-                    ?.filter { isImageFile(it) }
+                    ?.filter { isMediaFile(it) }
                     ?.map { it.absolutePath }
                     ?: emptyList()
             }
@@ -94,65 +95,95 @@ object PhotoDatabase {
             Log.i("FotoTriage", "MediaStore scan complete")
 
             val projection = arrayOf(
-                Images.Media._ID,
-                Images.Media.DISPLAY_NAME,
-                Images.Media.DATA,
-                Images.Media.DATE_TAKEN
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.DATA,
+                MediaStore.MediaColumns.DATE_TAKEN,
+            )
+            val selection = folderPaths.joinToString(" OR ") { "${MediaStore.MediaColumns.DATA} LIKE ?" }
+            val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
+
+            data class RawItem(
+                val uri: Uri,
+                val fileName: String,
+                val filePath: String,
+                val dateTakenMillis: Long,
+                val isVideo: Boolean,
             )
 
-            val selection = folderPaths.joinToString(" OR ") { "${Images.Media.DATA} LIKE ?" }
-            val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
+            val rawItems = mutableListOf<RawItem>()
 
             context.contentResolver.query(
                 Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                "${Images.Media.DATE_TAKEN} ASC"
+                projection, selection, selectionArgs, null
             )?.use { cursor ->
-                val idColumn = cursor.getColumnIndexOrThrow(Images.Media._ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(Images.Media.DISPLAY_NAME)
-                val dataColumn = cursor.getColumnIndexOrThrow(Images.Media.DATA)
-                val dateTakenColumn = cursor.getColumnIndexOrThrow(Images.Media.DATE_TAKEN)
-
-                val totalCount = cursor.count
-                Log.i("FotoTriage", "MediaStore returned $totalCount photo(s)")
-                var currentCount = 0
-
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
                 while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idColumn)
-                    val uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id)
-                    val filePath = cursor.getString(dataColumn)
-                    val fileName = cursor.getString(nameColumn)
-                    val dateTakenMillis = cursor.getLong(dateTakenColumn)
-                    val dateTaken = Date(dateTakenMillis)
-
-                    val folder = File(filePath).parent
-                    val helper = if (folder != null) databaseHelpers[folder] else null
-                    if (helper == null) {
-                        Log.w("FotoTriage", "No database helper for $filePath, skipping")
-                        continue
-                    }
-
-                    val triaged = helper.addOrRetrieveEntry(fileName, dateTakenMillis)
-
-                    _photos.update {
-                        it + Photo(
-                            uri = uri,
-                            filePath = filePath,
-                            fileName = fileName,
-                            dateTaken = dateTaken,
-                            dateTakenMillis = dateTakenMillis,
-                            triaged = triaged.first,
-                            favorite = triaged.second
-                        )
-                    }
-                    currentCount++
-                    progress.value = Triple(currentCount, totalCount, (currentCount * 100) / totalCount)
+                    val id = cursor.getLong(idCol)
+                    rawItems += RawItem(
+                        uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id),
+                        fileName = cursor.getString(nameCol),
+                        filePath = cursor.getString(dataCol),
+                        dateTakenMillis = cursor.getLong(dateCol),
+                        isVideo = false,
+                    )
                 }
             }
 
-            Log.i("FotoTriage", "Loaded ${_photos.value.size} photo(s) across ${folderPaths.size} folder(s)")
+            context.contentResolver.query(
+                Video.Media.EXTERNAL_CONTENT_URI,
+                projection, selection, selectionArgs, null
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idCol)
+                    rawItems += RawItem(
+                        uri = ContentUris.withAppendedId(Video.Media.EXTERNAL_CONTENT_URI, id),
+                        fileName = cursor.getString(nameCol),
+                        filePath = cursor.getString(dataCol),
+                        dateTakenMillis = cursor.getLong(dateCol),
+                        isVideo = true,
+                    )
+                }
+            }
+
+            rawItems.sortBy { it.dateTakenMillis }
+            Log.i("FotoTriage", "MediaStore returned ${rawItems.count { !it.isVideo }} image(s) and ${rawItems.count { it.isVideo }} video(s)")
+
+            val totalCount = rawItems.size
+            var currentCount = 0
+
+            for (item in rawItems) {
+                val folder = File(item.filePath).parent
+                val helper = if (folder != null) databaseHelpers[folder] else null
+                if (helper == null) {
+                    Log.w("FotoTriage", "No database helper for ${item.filePath}, skipping")
+                    continue
+                }
+                val triaged = helper.addOrRetrieveEntry(item.fileName, item.dateTakenMillis)
+                _photos.update {
+                    it + Photo(
+                        uri = item.uri,
+                        filePath = item.filePath,
+                        fileName = item.fileName,
+                        dateTaken = Date(item.dateTakenMillis),
+                        dateTakenMillis = item.dateTakenMillis,
+                        triaged = triaged.first,
+                        favorite = triaged.second,
+                        isVideo = item.isVideo,
+                    )
+                }
+                currentCount++
+                progress.value = Triple(currentCount, totalCount, (currentCount * 100) / totalCount)
+            }
+
+            Log.i("FotoTriage", "Loaded ${_photos.value.size} item(s) across ${folderPaths.size} folder(s)")
 
             databaseHelpers.forEach { (folderPath, helper) ->
                 val folderFileNames = _photos.value

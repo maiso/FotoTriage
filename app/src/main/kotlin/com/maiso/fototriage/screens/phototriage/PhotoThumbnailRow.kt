@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.launch
@@ -74,26 +77,28 @@ fun PhotoThumbnailRow(
             {
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 1.dp) // Padding between images
+                        .padding(horizontal = 1.dp)
                         .border(
-                            width = if (isCurrent) 2.dp else 0.dp, // Outline only for the current image
-                            color = if (isCurrent) Color.LightGray else Color.Transparent, // Color for the outline
+                            width = if (isCurrent) 2.dp else 0.dp,
+                            color = if (isCurrent) Color.LightGray else Color.Transparent,
                         )
-                        .clickable {
-                            onPhotoClicked(index)
-
-                        }
+                        .clickable { onPhotoClicked(index) }
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(photo.uri)
                             .build(),
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(smallImageSize) // Keep the size consistent for all images
-
+                        modifier = Modifier.size(smallImageSize),
                     )
-
+                    if (photo.isVideo) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 // Underline for favorite or triaged photos

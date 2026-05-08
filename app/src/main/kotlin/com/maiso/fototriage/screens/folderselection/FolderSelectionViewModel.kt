@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.maiso.fototriage.database.scanImageFolders
+import com.maiso.fototriage.database.scanMediaFolders
 import com.maiso.fototriage.preferences.FolderPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +32,7 @@ class FolderSelectionViewModel(private val context: Context) : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             val savedFolders = FolderPreferences.getSelectedFolders(context).toSet()
-            val allFolders = scanImageFolders()
+            val allFolders = scanMediaFolders()
             val items = allFolders
                 .map { path ->
                     FolderItem(
