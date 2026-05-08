@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -41,7 +44,8 @@ fun OverviewScreen(
     uiState: OverviewScreenUiState,
     modifier: Modifier = Modifier,
     onYearClick: (Year) -> Unit,
-    onMonthClick: (Year, Month) -> Unit
+    onMonthClick: (Year, Month) -> Unit,
+    onSettingsClick: () -> Unit = {},
 ) {
     var showCompleted by remember { mutableStateOf(false) }
 
@@ -55,23 +59,30 @@ fun OverviewScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Select folders",
+                        tint = Color.Gray,
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
                     text = "Show completed months",
                     modifier = Modifier.padding(end = 8.dp),
-                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray) // Secondary text style
+                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                 )
 
-                // Switch with less prominent color
                 Switch(
                     checked = showCompleted,
                     onCheckedChange = { showCompleted = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.Gray, // Less prominent color for checked state
-                        uncheckedThumbColor = Color.DarkGray, // Less prominent color for unchecked state
-                        checkedTrackColor = Color.LightGray, // Less prominent color for track when checked
-                        uncheckedTrackColor = Color.Gray // Less prominent color for track when unchecked
+                        checkedThumbColor = Color.Gray,
+                        uncheckedThumbColor = Color.DarkGray,
+                        checkedTrackColor = Color.LightGray,
+                        uncheckedTrackColor = Color.Gray
                     )
                 )
             }

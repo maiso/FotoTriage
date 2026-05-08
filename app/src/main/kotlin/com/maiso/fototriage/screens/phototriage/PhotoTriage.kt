@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -33,6 +37,7 @@ fun PhotoTriage(
     onTriagedPhoto: (photo: Photo) -> Unit,
     onFavoritePhoto: (photo: Photo) -> Unit,
     onShowTriagedChange: (showTriaged: Boolean) -> Unit,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope() // Coroutine scope for scrolling
@@ -53,14 +58,20 @@ fun PhotoTriage(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Spacer to push the first text to the center
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Back to overview",
+                        tint = Color.Gray,
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
 
-                // First Text centered in the available space
                 if (uiState.photos.isNotEmpty() && pagerState.currentPage in uiState.photos.indices) {
                     Text(
                         text = uiState.photos[pagerState.currentPage].fileName,
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray) // Secondary text style
+                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                     )
                 }
 

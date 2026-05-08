@@ -1,8 +1,8 @@
 package com.maiso.fototriage.database
 
-import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.MediaStore.Images
 import android.util.Log
@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Month
@@ -21,6 +22,8 @@ import java.time.Year
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 
 data class Photo(
     val uri: Uri,
@@ -54,65 +57,42 @@ fun List<Photo>.findUniqueYears(): Set<Year> {
 object PhotoDatabase {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    private lateinit var databaseHelper: DatabaseHelper
+    private var databaseHelpers: Map<String, DatabaseHelper> = emptyMap()
 
     private val _photos: MutableStateFlow<List<Photo>> = MutableStateFlow(emptyList())
     val photos: StateFlow<List<Photo>> = _photos.asStateFlow()
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
-    private fun getUniqueParentFolders(contentResolver: ContentResolver): Set<String> {
-        val parentFolders = mutableSetOf<String>() // Use a Set to store unique parent folder paths
-
-        // Define the projection to specify which columns to retrieve
-        val projection = arrayOf(Images.Media.DATA)
-
-        // Query the MediaStore for images
-        val cursor = contentResolver.query(
-            Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            null,
-            null,
-            null
-        )
-
-        cursor?.use {
-            val columnIndex = it.getColumnIndexOrThrow(Images.Media.DATA)
-            while (it.moveToNext()) {
-                val imagePath = it.getString(columnIndex)
-                val parentFolder = File(imagePath).parent // Get the parent folder
-                if (parentFolder != null && parentFolder.endsWith("/DCIM/Camera")) {
-                    parentFolders.add(parentFolder) // Add to Set
-                }
-            }
-        }
-
-        return parentFolders
+    private fun helperForPhoto(photo: Photo): DatabaseHelper {
+        val folder = File(photo.filePath).parent
+            ?: error("No parent directory for ${photo.filePath}")
+        return databaseHelpers[folder]
+            ?: error("No database registered for folder $folder")
     }
 
-    fun getAllPhotos(context: Context, onFinished: suspend () -> Unit) {
+    fun getAllPhotos(context: Context, folderPaths: List<String>, onFinished: suspend () -> Unit) {
+        databaseHelpers = folderPaths.associateWith { DatabaseHelper(context, it) }
 
-        val imageLocation = getUniqueParentFolders(context.contentResolver)
-        if (imageLocation.size != 1) {
-            Log.e("FotoTriage", "Image locations: $imageLocation")
-
-            toast(context, "Images are in different locations. Not supported.")
-            return
+        databaseHelpers.forEach { (folder, helper) ->
+            Log.d("FotoTriage", "DB entries for $folder: ${helper.getAllData().size}")
         }
-        Log.d("FotoTriage", "Image location: ${imageLocation.first()}")
-
-        databaseHelper = DatabaseHelper(context, imageLocation.first())
 
         _photos.value = emptyList()
-
-        databaseHelper.getAllData().let {
-            Log.d("FotoTriage", "Db entires: ${it.size}")
-//            it.forEach {
-//                Log.d("FotoTriage", "Db Entry: $it")
-//            }
-        }
+        progress.value = null
 
         coroutineScope.launch {
+            // Collect all image files in the selected folders and ensure MediaStore knows about them
+            val filesToScan = folderPaths.flatMap { folder ->
+                File(folder).listFiles()
+                    ?.filter { isImageFile(it) }
+                    ?.map { it.absolutePath }
+                    ?: emptyList()
+            }
+            Log.i("FotoTriage", "Triggering MediaStore scan for ${filesToScan.size} file(s)")
+            scanIntoMediaStore(context, filesToScan)
+            Log.i("FotoTriage", "MediaStore scan complete")
+
             val projection = arrayOf(
                 Images.Media._ID,
                 Images.Media.DISPLAY_NAME,
@@ -120,18 +100,15 @@ object PhotoDatabase {
                 Images.Media.DATE_TAKEN
             )
 
-            val orderBy = Images.Media.DATE_TAKEN
-
-            // Define the selection criteria
-            val selection = "${Images.Media.DATA} LIKE ?"
-            val selectionArgs = arrayOf("%/DCIM/Camera/%")
+            val selection = folderPaths.joinToString(" OR ") { "${Images.Media.DATA} LIKE ?" }
+            val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
 
             context.contentResolver.query(
                 Images.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 selection,
                 selectionArgs,
-                "$orderBy ASC"
+                "${Images.Media.DATE_TAKEN} ASC"
             )?.use { cursor ->
                 val idColumn = cursor.getColumnIndexOrThrow(Images.Media._ID)
                 val nameColumn = cursor.getColumnIndexOrThrow(Images.Media.DISPLAY_NAME)
@@ -139,31 +116,25 @@ object PhotoDatabase {
                 val dateTakenColumn = cursor.getColumnIndexOrThrow(Images.Media.DATE_TAKEN)
 
                 val totalCount = cursor.count
+                Log.i("FotoTriage", "MediaStore returned $totalCount photo(s)")
                 var currentCount = 0
+
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
                     val uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id)
-
-                    val dateTakenMillis = cursor.getLong(dateTakenColumn)
-                    val dateTaken = Date(dateTakenMillis)
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                    dateFormat.format(dateTaken)
-
                     val filePath = cursor.getString(dataColumn)
                     val fileName = cursor.getString(nameColumn)
+                    val dateTakenMillis = cursor.getLong(dateTakenColumn)
+                    val dateTaken = Date(dateTakenMillis)
 
-//                    Log.i(
-//                        "FotoTriage",
-//                        "Photo ID:$id " +
-//                                "URI: $uri " +
-//                                "NAME:${fileName} " +
-//                                "PATH:${filePath}  " +
-//                                "DATETAKEN:${cursor.getString(dateTakenColumn)} " +
-//                                "FORMATTED:$formattedDate"
-//                    )
+                    val folder = File(filePath).parent
+                    val helper = if (folder != null) databaseHelpers[folder] else null
+                    if (helper == null) {
+                        Log.w("FotoTriage", "No database helper for $filePath, skipping")
+                        continue
+                    }
 
-
-                    val triaged = databaseHelper.addOrRetrieveEntry(fileName, dateTakenMillis)
+                    val triaged = helper.addOrRetrieveEntry(fileName, dateTakenMillis)
 
                     _photos.update {
                         it + Photo(
@@ -177,29 +148,46 @@ object PhotoDatabase {
                         )
                     }
                     currentCount++
-                    val percentage = ((currentCount * 100) / totalCount)
-                    progress.value = Triple(currentCount, totalCount, percentage)
-
-                    //TODO Check for any files in database but not on device.
+                    progress.value = Triple(currentCount, totalCount, (currentCount * 100) / totalCount)
                 }
             }
-            Log.i("FotoTriage", "Got ${_photos.value.size} photos")
 
-            databaseHelper.cleanUpDatabase(_photos.value.map { it.fileName })
+            Log.i("FotoTriage", "Loaded ${_photos.value.size} photo(s) across ${folderPaths.size} folder(s)")
+
+            databaseHelpers.forEach { (folderPath, helper) ->
+                val folderFileNames = _photos.value
+                    .filter { File(it.filePath).parent == folderPath }
+                    .map { it.fileName }
+                helper.cleanUpDatabase(folderFileNames)
+            }
+
             onFinished()
-//        preCacheImages(galleryImageUrls)
+        }
+    }
+
+    private suspend fun scanIntoMediaStore(context: Context, paths: List<String>) {
+        if (paths.isEmpty()) return
+        suspendCancellableCoroutine { cont ->
+            val remaining = AtomicInteger(paths.size)
+            MediaScannerConnection.scanFile(
+                context,
+                paths.toTypedArray(),
+                null
+            ) { path, uri ->
+                Log.d("FotoTriage", "MediaStore scanned: $path -> $uri")
+                if (remaining.decrementAndGet() == 0) cont.resume(Unit)
+            }
         }
     }
 
     /**
-     *
      * @param forceTriaged if true will mark photo as triaged regardless of previous state.
      * @param unfavorite if true will mark photo as non-favorite regardless of previous state.
      */
     fun markPhotoTriaged(photo: Photo, forceTriaged: Boolean = false, unfavorite: Boolean = false) {
-        val triaged = if(forceTriaged) true else !photo.triaged
+        val triaged = if (forceTriaged) true else !photo.triaged
         val favorite = if (unfavorite) false else photo.favorite
-        databaseHelper.insertData(
+        helperForPhoto(photo).insertData(
             PhotoDataBaseEntry(
                 fileName = photo.fileName,
                 dateTakenMillis = photo.dateTakenMillis,
@@ -207,20 +195,16 @@ object PhotoDatabase {
                 favorite = favorite,
             )
         )
-        //TODO check result
         _photos.update { photos ->
             photos.map {
-                if (it.fileName == photo.fileName) {
-                    it.copy(triaged = triaged, favorite = favorite)
-                } else {
-                    it
-                }
+                if (it.fileName == photo.fileName) it.copy(triaged = triaged, favorite = favorite)
+                else it
             }
         }
     }
 
     fun markPhotoFavorite(photo: Photo) {
-        databaseHelper.insertData(
+        helperForPhoto(photo).insertData(
             PhotoDataBaseEntry(
                 fileName = photo.fileName,
                 dateTakenMillis = photo.dateTakenMillis,
@@ -230,11 +214,8 @@ object PhotoDatabase {
         )
         _photos.update { photos ->
             photos.map {
-                if (it.fileName == photo.fileName) {
-                    it.copy(favorite = !photo.favorite)
-                } else {
-                    it
-                }
+                if (it.fileName == photo.fileName) it.copy(favorite = !photo.favorite)
+                else it
             }
         }
     }
@@ -251,12 +232,10 @@ object PhotoDatabase {
                 val deleted: Boolean = target.delete()
                 if (deleted) {
                     _photos.update { photos ->
-                        photos.filterNot {
-                            it.filePath == path
-                        }
+                        photos.filterNot { it.filePath == path }
                     }
                 } else {
-                    toast(context, "Failed  to delete $fileName")
+                    toast(context, "Failed to delete $fileName")
                 }
             } catch (e: SecurityException) {
                 toast(context, "SecurityException deleting file:\n${e.message}")
@@ -264,7 +243,6 @@ object PhotoDatabase {
                 toast(context, "Error deleting file:\n${e.localizedMessage}")
             }
         } else {
-            // file not found
             toast(context, "$fileName not found on storage")
         }
     }
@@ -273,28 +251,3 @@ object PhotoDatabase {
         Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
 }
-
-//    private fun preCacheImages(photos: List<Uri>) {
-//
-//        coroutineScope.launch {
-//            for (uri in photos) {
-//                val request = ImageRequest.Builder(context)
-//                    .data(uri)
-//                    .target(
-//                        onSuccess = {
-//                            // Handle successful image loading
-//                            // You can log or perform any action with the loaded drawable
-//                            Log.i("FotoTriage", "Image loaded successfully: $uri")
-//                        },
-//                        onError = {
-//                            // Handle error in loading image
-//                            Log.i("FotoTriage", "Error loading image: $uri")
-//                        }
-//                    )
-//                    .build()
-//
-//                SingletonImageLoader.get(appContext).enqueue(request)
-//            }
-//        }
-//    }
-//}

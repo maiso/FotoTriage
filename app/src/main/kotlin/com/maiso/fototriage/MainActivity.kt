@@ -38,8 +38,11 @@ import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.database.PhotoDatabase
 import com.maiso.fototriage.export.ExportScreen
 import com.maiso.fototriage.export.ExportScreenViewModel
+import com.maiso.fototriage.preferences.FolderPreferences
 import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewScreen
 import com.maiso.fototriage.screens.favoriteoverview.FavoriteOverviewViewModel
+import com.maiso.fototriage.screens.folderselection.FolderSelectionScreen
+import com.maiso.fototriage.screens.folderselection.FolderSelectionViewModel
 import com.maiso.fototriage.screens.loading.LoadingScreen
 import com.maiso.fototriage.screens.loading.LoadingScreenViewModel
 import com.maiso.fototriage.screens.overview.OverviewScreen
@@ -55,6 +58,8 @@ import java.time.Year
 import java.util.Calendar
 
 sealed interface Dest {
+    data object FolderSelectionScreen
+
     data object LoadingScreen
 
     data object OverviewScreen
@@ -86,14 +91,11 @@ class MainActivity : ComponentActivity() {
 
     private var favoritePhotos: List<Photo> = emptyList()
 
-    // Launcher to take user to the “All files access” page for *this* app
     private val manageAllFilesLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            // We come back here after the user toggles the switch
             if (Environment.isExternalStorageManager()) {
                 Log.i("FotoTriage", "Manage all files permission granted")
             } else {
-                // permission still not granted; inform the user or retry
                 Toast.makeText(applicationContext, "Permission not granted", Toast.LENGTH_LONG)
                     .show()
             }
@@ -104,7 +106,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestManageAllFilesPermission() {
-        // Opens Settings > Apps > YourApp > “Allow management of all files”
         val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
             data = "package:$packageName".toUri()
         }
@@ -128,17 +129,13 @@ class MainActivity : ComponentActivity() {
         createNotificationChannel()
         if (!isNotificationScheduled(this)) {
             scheduleMonthlyNotification(this)
-        } else {
-            // Notification is already scheduled
         }
 
         usbDirectoryPickerLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-
                 if (result.resultCode == RESULT_OK) {
                     val uri = result.data?.data
                     if (uri != null) {
-                        // Copy files to USB and monitor progress
                         usbFileCopier.copyPhotosToUsb(uri, favoritePhotos)
                     } else {
                         Toast.makeText(
@@ -151,15 +148,19 @@ class MainActivity : ComponentActivity() {
             }
 
         setContent {
-            backStack = remember { mutableStateListOf(Dest.LoadingScreen) }
+            val savedFolders = FolderPreferences.getSelectedFolders(applicationContext)
+            backStack = remember {
+                mutableStateListOf(
+                    if (savedFolders.isEmpty()) Dest.FolderSelectionScreen else Dest.LoadingScreen
+                )
+            }
 
-            PhotoDatabase.getAllPhotos(
-                application.applicationContext
-            ) {
-                withContext(Dispatchers.Main) {
-                    backStack.add(Dest.OverviewScreen)
-                    backStack.remove(Dest.LoadingScreen)
-
+            if (savedFolders.isNotEmpty()) {
+                PhotoDatabase.getAllPhotos(applicationContext, savedFolders) {
+                    withContext(Dispatchers.Main) {
+                        backStack.add(Dest.OverviewScreen)
+                        backStack.remove(Dest.LoadingScreen)
+                    }
                 }
             }
 
@@ -174,6 +175,31 @@ class MainActivity : ComponentActivity() {
                             rememberViewModelStoreNavEntryDecorator(),
                         ),
                         entryProvider = entryProvider {
+                            entry<Dest.FolderSelectionScreen> { _ ->
+                                val folderSelectionViewModel: FolderSelectionViewModel =
+                                    viewModel(factory = FolderSelectionViewModel.Companion.FolderSelectionViewModelFactory(application))
+                                val uiState by folderSelectionViewModel.uiState.collectAsState()
+
+                                FolderSelectionScreen(
+                                    uiState = uiState,
+                                    onToggle = folderSelectionViewModel::toggle,
+                                    onContinue = {
+                                        folderSelectionViewModel.saveSelection()
+                                        val folders = FolderPreferences.getSelectedFolders(applicationContext)
+                                        backStack.add(Dest.LoadingScreen)
+                                        PhotoDatabase.getAllPhotos(applicationContext, folders) {
+                                            withContext(Dispatchers.Main) {
+                                                backStack.remove(Dest.LoadingScreen)
+                                                backStack.remove(Dest.FolderSelectionScreen)
+                                                if (!backStack.contains(Dest.OverviewScreen)) {
+                                                    backStack.add(Dest.OverviewScreen)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             entry<Dest.LoadingScreen> { _ ->
                                 val loadingScreenViewModel: LoadingScreenViewModel =
                                     viewModel(factory = LoadingScreenViewModel.Factory)
@@ -201,6 +227,9 @@ class MainActivity : ComponentActivity() {
                                         backStack.add(
                                             Dest.FavoriteOverviewScreen(year)
                                         )
+                                    },
+                                    onSettingsClick = {
+                                        backStack.add(Dest.FolderSelectionScreen)
                                     }
                                 )
                             }
@@ -237,6 +266,7 @@ class MainActivity : ComponentActivity() {
                                     onFavoritePhoto = photoTriageViewModel::onFavoritePhoto,
                                     onDeletePhoto = photoTriageViewModel::onDeletePhoto,
                                     onShowTriagedChange = photoTriageViewModel::onHideTriaged,
+                                    onBack = { backStack.removeLastOrNull() },
                                 )
                             }
                             entry<Dest.TriageFinished> { key ->
@@ -271,6 +301,7 @@ class MainActivity : ComponentActivity() {
                                 FavoriteOverviewScreen(
                                     uiState,
                                     Modifier,
+                                    onBack = { backStack.removeLastOrNull() },
                                     openExportPanel =
                                         {
                                             with(favoriteOverviewViewModel.uiState.value) {
@@ -315,7 +346,6 @@ class MainActivity : ComponentActivity() {
             if (isGranted) {
                 // Permission is granted, you can now access the photos
             } else {
-                // Permission denied
                 Log.e("FotoTriage", "Permission denied")
             }
         }
@@ -334,7 +364,6 @@ class MainActivity : ComponentActivity() {
             }
 
             else -> {
-                // Request the permission
                 requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
             }
         }
@@ -354,7 +383,6 @@ class MainActivity : ComponentActivity() {
         notificationManager.createNotificationChannel(channel)
     }
 
-
     private fun scheduleMonthlyNotification(context: Context) {
         val alarmManager = context.getSystemService(ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, NotificationReceiver::class.java)
@@ -365,22 +393,20 @@ class MainActivity : ComponentActivity() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Set the calendar to the first day of the next month
         val calendar = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 9) // Set the time you want the notification to appear
+            set(Calendar.HOUR_OF_DAY, 9)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             if (timeInMillis < System.currentTimeMillis()) {
-                add(Calendar.MONTH, 1) // Move to the next month if the date is in the past
+                add(Calendar.MONTH, 1)
             }
         }
 
-        // Set the alarm to repeat every month
         alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
             calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY * 30, // Roughly one month
+            AlarmManager.INTERVAL_DAY * 30,
             pendingIntent
         )
     }
