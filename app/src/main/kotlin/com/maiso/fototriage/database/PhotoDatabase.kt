@@ -91,7 +91,11 @@ object PhotoDatabase {
                     ?: emptyList()
             }
             Log.i("FotoTriage", "Triggering MediaStore scan for ${filesToScan.size} file(s)")
-            scanIntoMediaStore(context, filesToScan)
+            val scanTotal = filesToScan.size
+            progress.value = Triple(0, scanTotal, 0)
+            scanIntoMediaStore(context, filesToScan) { scanned ->
+                progress.value = Triple(scanned, scanTotal, if (scanTotal > 0) (scanned * 100) / scanTotal else 0)
+            }
             Log.i("FotoTriage", "MediaStore scan complete")
 
             val projection = arrayOf(
@@ -196,16 +200,18 @@ object PhotoDatabase {
         }
     }
 
-    private suspend fun scanIntoMediaStore(context: Context, paths: List<String>) {
+    private suspend fun scanIntoMediaStore(context: Context, paths: List<String>, onProgress: (scanned: Int) -> Unit = {}) {
         if (paths.isEmpty()) return
         suspendCancellableCoroutine { cont ->
             val remaining = AtomicInteger(paths.size)
+            val scanned = AtomicInteger(0)
             MediaScannerConnection.scanFile(
                 context,
                 paths.toTypedArray(),
                 null
             ) { path, uri ->
                 Log.d("FotoTriage", "MediaStore scanned: $path -> $uri")
+                onProgress(scanned.incrementAndGet())
                 if (remaining.decrementAndGet() == 0) cont.resume(Unit)
             }
         }
