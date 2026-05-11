@@ -66,6 +66,14 @@ object PhotoDatabase {
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
+    private data class RawMediaItem(
+        val uri: Uri,
+        val fileName: String,
+        val filePath: String,
+        val dateTakenMillis: Long,
+        val isVideo: Boolean,
+    )
+
     private fun helperForPhoto(photo: Photo): DatabaseHelper {
         val folder = File(photo.filePath).parent
             ?: error("No parent directory for ${photo.filePath}")
@@ -75,128 +83,157 @@ object PhotoDatabase {
 
     fun getAllPhotos(context: Context, folderPaths: List<String>, onFinished: suspend () -> Unit) {
         databaseHelpers = folderPaths.associateWith { DatabaseHelper(context, it) }
-
-        databaseHelpers.forEach { (folder, helper) ->
-            Log.d("FotoTriage", "DB entries for $folder: ${helper.getAllData().size}")
-        }
-
         _photos.value = emptyList()
         progress.value = null
 
         coroutineScope.launch {
-            val filesToScan = folderPaths.flatMap { folder ->
-                File(folder).listFiles()
-                    ?.filter { isMediaFile(it) }
-                    ?.map { it.absolutePath }
-                    ?: emptyList()
-            }
-            Log.i("FotoTriage", "Triggering MediaStore scan for ${filesToScan.size} file(s)")
-            val scanTotal = filesToScan.size
-            progress.value = Triple(0, scanTotal, 0)
-            scanIntoMediaStore(context, filesToScan) { scanned ->
-                progress.value = Triple(scanned, scanTotal, if (scanTotal > 0) (scanned * 100) / scanTotal else 0)
-            }
-            Log.i("FotoTriage", "MediaStore scan complete")
-
-            val projection = arrayOf(
-                MediaStore.MediaColumns._ID,
-                MediaStore.MediaColumns.DISPLAY_NAME,
-                MediaStore.MediaColumns.DATA,
-                MediaStore.MediaColumns.DATE_TAKEN,
-            )
             val selection = folderPaths.joinToString(" OR ") { "${MediaStore.MediaColumns.DATA} LIKE ?" }
             val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
 
-            data class RawItem(
-                val uri: Uri,
-                val fileName: String,
-                val filePath: String,
-                val dateTakenMillis: Long,
-                val isVideo: Boolean,
-            )
+            syncNewFilesToMediaStore(context, folderPaths, selection, selectionArgs)
 
-            val rawItems = mutableListOf<RawItem>()
-
-            context.contentResolver.query(
-                Images.Media.EXTERNAL_CONTENT_URI,
-                projection, selection, selectionArgs, null
-            )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
-                while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    rawItems += RawItem(
-                        uri = ContentUris.withAppendedId(Images.Media.EXTERNAL_CONTENT_URI, id),
-                        fileName = cursor.getString(nameCol),
-                        filePath = cursor.getString(dataCol),
-                        dateTakenMillis = cursor.getLong(dateCol),
-                        isVideo = false,
-                    )
-                }
-            }
-
-            context.contentResolver.query(
-                Video.Media.EXTERNAL_CONTENT_URI,
-                projection, selection, selectionArgs, null
-            )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
-                while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    rawItems += RawItem(
-                        uri = ContentUris.withAppendedId(Video.Media.EXTERNAL_CONTENT_URI, id),
-                        fileName = cursor.getString(nameCol),
-                        filePath = cursor.getString(dataCol),
-                        dateTakenMillis = cursor.getLong(dateCol),
-                        isVideo = true,
-                    )
-                }
-            }
-
-            rawItems.sortBy { it.dateTakenMillis }
+            val rawItems = queryMediaStoreItems(context, selection, selectionArgs)
             Log.i("FotoTriage", "MediaStore returned ${rawItems.count { !it.isVideo }} image(s) and ${rawItems.count { it.isVideo }} video(s)")
 
-            val totalCount = rawItems.size
-            var currentCount = 0
+            val dbMaps = databaseHelpers.mapValues { (_, helper) -> helper.loadAllAsMap() }
+            val (photoList, newEntriesByFolder) = buildPhotoList(rawItems, dbMaps)
 
-            for (item in rawItems) {
-                val folder = File(item.filePath).parent
-                val helper = if (folder != null) databaseHelpers[folder] else null
-                if (helper == null) {
-                    Log.w("FotoTriage", "No database helper for ${item.filePath}, skipping")
-                    continue
-                }
-                val triaged = helper.addOrRetrieveEntry(item.fileName, item.dateTakenMillis)
-                _photos.update {
-                    it + Photo(
-                        uri = item.uri,
-                        filePath = item.filePath,
-                        fileName = item.fileName,
-                        dateTaken = Date(item.dateTakenMillis),
-                        dateTakenMillis = item.dateTakenMillis,
-                        triaged = triaged.first,
-                        favorite = triaged.second,
-                        isVideo = item.isVideo,
+            persistNewEntries(newEntriesByFolder)
+
+            _photos.value = photoList
+            Log.i("FotoTriage", "Loaded ${photoList.size} item(s) across ${folderPaths.size} folder(s)")
+
+            cleanUpStaleDatabaseEntries(photoList)
+            onFinished()
+        }
+    }
+
+    private suspend fun syncNewFilesToMediaStore(
+        context: Context,
+        folderPaths: List<String>,
+        selection: String,
+        selectionArgs: Array<String>,
+    ) {
+        val alreadyIndexed = mutableSetOf<String>()
+        for (contentUri in listOf(Images.Media.EXTERNAL_CONTENT_URI, Video.Media.EXTERNAL_CONTENT_URI)) {
+            context.contentResolver.query(
+                contentUri,
+                arrayOf(MediaStore.MediaColumns.DATA),
+                selection, selectionArgs, null
+            )?.use { cursor ->
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                while (cursor.moveToNext()) alreadyIndexed += cursor.getString(dataCol)
+            }
+        }
+        val filesToScan = folderPaths.flatMap { folder ->
+            File(folder).listFiles()
+                ?.filter { isMediaFile(it) && it.absolutePath !in alreadyIndexed }
+                ?.map { it.absolutePath }
+                ?: emptyList()
+        }
+        Log.i("FotoTriage", "Scanning ${filesToScan.size} new file(s) into MediaStore (${alreadyIndexed.size} already indexed)")
+        if (filesToScan.isNotEmpty()) {
+            val scanTotal = filesToScan.size
+            progress.value = Triple(0, scanTotal, 0)
+            scanIntoMediaStore(context, filesToScan) { scanned ->
+                progress.value = Triple(scanned, scanTotal, (scanned * 100) / scanTotal)
+            }
+        }
+        Log.i("FotoTriage", "MediaStore scan complete")
+    }
+
+    private fun queryMediaStoreItems(
+        context: Context,
+        selection: String,
+        selectionArgs: Array<String>,
+    ): List<RawMediaItem> {
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.DATE_TAKEN,
+        )
+        val items = mutableListOf<RawMediaItem>()
+
+        fun readCursor(contentUri: Uri, isVideo: Boolean) {
+            context.contentResolver.query(
+                contentUri, projection, selection, selectionArgs, null
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+                while (cursor.moveToNext()) {
+                    items += RawMediaItem(
+                        uri = ContentUris.withAppendedId(contentUri, cursor.getLong(idCol)),
+                        fileName = cursor.getString(nameCol),
+                        filePath = cursor.getString(dataCol),
+                        dateTakenMillis = cursor.getLong(dateCol),
+                        isVideo = isVideo,
                     )
                 }
-                currentCount++
-                progress.value = Triple(currentCount, totalCount, (currentCount * 100) / totalCount)
             }
+        }
 
-            Log.i("FotoTriage", "Loaded ${_photos.value.size} item(s) across ${folderPaths.size} folder(s)")
+        readCursor(Images.Media.EXTERNAL_CONTENT_URI, isVideo = false)
+        readCursor(Video.Media.EXTERNAL_CONTENT_URI, isVideo = true)
+        items.sortBy { it.dateTakenMillis }
+        return items
+    }
 
-            databaseHelpers.forEach { (folderPath, helper) ->
-                val folderFileNames = _photos.value
-                    .filter { File(it.filePath).parent == folderPath }
-                    .map { it.fileName }
-                helper.cleanUpDatabase(folderFileNames)
+    private fun buildPhotoList(
+        rawItems: List<RawMediaItem>,
+        dbMaps: Map<String, Map<String, Pair<Boolean, Boolean>>>,
+    ): Pair<List<Photo>, Map<String, List<PhotoDataBaseEntry>>> {
+        val totalCount = rawItems.size
+        progress.value = Triple(0, totalCount, 0)
+
+        val photoList = ArrayList<Photo>(totalCount)
+        val newEntriesByFolder = mutableMapOf<String, MutableList<PhotoDataBaseEntry>>()
+
+        for ((index, item) in rawItems.withIndex()) {
+            val folder = File(item.filePath).parent ?: continue
+            if (databaseHelpers[folder] == null) {
+                Log.w("FotoTriage", "No database helper for ${item.filePath}, skipping")
+                continue
             }
+            val (triaged, favorite) = dbMaps[folder]?.get(item.fileName) ?: run {
+                newEntriesByFolder.getOrPut(folder) { mutableListOf() } +=
+                    PhotoDataBaseEntry(item.fileName, item.dateTakenMillis, false, false)
+                false to false
+            }
+            photoList += Photo(
+                uri = item.uri,
+                filePath = item.filePath,
+                fileName = item.fileName,
+                dateTaken = Date(item.dateTakenMillis),
+                dateTakenMillis = item.dateTakenMillis,
+                triaged = triaged,
+                favorite = favorite,
+                isVideo = item.isVideo,
+            )
+            if (index % 50 == 49 || index == totalCount - 1) {
+                val current = index + 1
+                progress.value = Triple(current, totalCount, (current * 100) / totalCount)
+            }
+        }
 
-            onFinished()
+        return photoList to newEntriesByFolder
+    }
+
+    private fun persistNewEntries(newEntriesByFolder: Map<String, List<PhotoDataBaseEntry>>) {
+        for ((folder, entries) in newEntriesByFolder) {
+            Log.i("FotoTriage", "Inserting ${entries.size} new DB entries for $folder")
+            databaseHelpers[folder]?.insertBatch(entries)
+        }
+    }
+
+    private fun cleanUpStaleDatabaseEntries(photoList: List<Photo>) {
+        databaseHelpers.forEach { (folderPath, helper) ->
+            val folderFileNames = photoList
+                .filter { File(it.filePath).parent == folderPath }
+                .map { it.fileName }
+            helper.cleanUpDatabase(folderFileNames)
         }
     }
 

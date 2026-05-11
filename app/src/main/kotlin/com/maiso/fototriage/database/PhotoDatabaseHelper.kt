@@ -82,38 +82,40 @@ class DatabaseHelper(context: Context, folderPath: String) :
         return dataList
     }
 
-    @SuppressLint("Range")
-    fun addOrRetrieveEntry(filename: String, dateTakenMillis: Long): Pair<Boolean, Boolean> {
+    fun loadAllAsMap(): Map<String, Pair<Boolean, Boolean>> {
+        val map = mutableMapOf<String, Pair<Boolean, Boolean>>()
         val db = this.readableDatabase
-        val query =
-            "SELECT $COLUMN_TRIAGED, $COLUMN_FAVORITE FROM $TABLE_NAME WHERE $COLUMN_FILENAME LIKE ?"
-        val cursor = db.rawQuery(query, arrayOf("%$filename%"))
-
-        val exists = cursor.count > 0
-        var status: Pair<Boolean, Boolean>? = null
-
-        if (exists) {
-            Log.d("FotoTriage", "$filename exists in database, retrieving.")
-            if (cursor.moveToFirst()) {
-                val triaged = cursor.getInt(cursor.getColumnIndex(COLUMN_TRIAGED)) == 1
-                val favorite = cursor.getInt(cursor.getColumnIndex(COLUMN_FAVORITE)) == 1
-                status = triaged to favorite
-                Log.d("FotoTriage", "$filename: Status $status")
-            } else {
-                Log.e("FotoTriage", "Cannot move cursur to first")
-            }
-        } else {
-            Log.d("FotoTriage", "$filename not found in database, inserting")
-            insertData(
-                PhotoDataBaseEntry(
-                    filename, dateTakenMillis, triaged = false, favorite = false
-                )
-            )
-            status = false to false
+        val cursor = db.rawQuery(
+            "SELECT $COLUMN_FILENAME, $COLUMN_TRIAGED, $COLUMN_FAVORITE FROM $TABLE_NAME",
+            null
+        )
+        while (cursor.moveToNext()) {
+            map[cursor.getString(0)] = (cursor.getInt(1) == 1) to (cursor.getInt(2) == 1)
         }
         cursor.close()
         db.close()
-        return status!!
+        return map
+    }
+
+    fun insertBatch(entries: List<PhotoDataBaseEntry>) {
+        if (entries.isEmpty()) return
+        val db = this.writableDatabase
+        db.beginTransaction()
+        try {
+            for (entry in entries) {
+                val values = ContentValues().apply {
+                    put(COLUMN_FILENAME, entry.fileName)
+                    put(COLUMN_DATA_TAKEN_MILLIS, entry.dateTakenMillis)
+                    put(COLUMN_TRIAGED, if (entry.triaged) 1 else 0)
+                    put(COLUMN_FAVORITE, if (entry.favorite) 1 else 0)
+                }
+                db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
     }
 
     @SuppressLint("Range")
