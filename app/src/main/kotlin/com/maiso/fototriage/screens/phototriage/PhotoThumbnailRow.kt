@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,7 +33,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
-import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -44,21 +42,18 @@ fun PhotoThumbnailRow(
     modifier: Modifier = Modifier,
     onPhotoClicked: (index: Int) -> Unit = {}
 ) {
-    val listState = rememberLazyListState() // Create a LazyListState
-    val coroutineScope = rememberCoroutineScope() // Coroutine scope for scrolling
-    LocalContext.current
+    val listState = rememberLazyListState()
 
-    val screenWidth =
-        LocalWindowInfo.current.containerSize // LocalConfiguration.current.screenWidthDp // Get screen width in dp
+    val screenWidth = LocalWindowInfo.current.containerSize
     val smallImageSize = (screenWidth.width * 0.045f).dp
 
     LaunchedEffect(currentPage) {
-        coroutineScope.launch {
-            val targetIndex = currentPage - 1
-            if (targetIndex >= 0) {
-                listState.animateScrollToItem(targetIndex) // Shift left to center the current photo
-            }
-        }
+        val itemWidth = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 0
+        val viewportWidth = listState.layoutInfo.viewportSize.width
+        listState.animateScrollToItem(
+            index = currentPage,
+            scrollOffset = -(viewportWidth / 2 - itemWidth / 2),
+        )
     }
 
     LazyRow(
