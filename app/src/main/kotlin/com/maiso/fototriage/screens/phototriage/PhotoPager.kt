@@ -30,6 +30,7 @@ fun PhotoPager(
 ) {
     HorizontalPager(
         state = pagerState,
+        beyondViewportPageCount = 1,
         modifier = modifier.padding(vertical = 10.dp),
     ) { page ->
         val photo = getPhoto(page)
