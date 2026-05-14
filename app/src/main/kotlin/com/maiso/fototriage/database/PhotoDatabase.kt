@@ -26,6 +26,11 @@ import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 
+private fun yearFromMillis(millis: Long): Int =
+    Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
+
+private fun helperKey(folder: String, year: Int) = "$folder:$year"
+
 data class Photo(
     val uri: Uri,
     val fileName: String,
@@ -77,16 +82,20 @@ object PhotoDatabase {
     private fun helperForPhoto(photo: Photo): DatabaseHelper {
         val folder = File(photo.filePath).parent
             ?: error("No parent directory for ${photo.filePath}")
-        return databaseHelpers[folder]
-            ?: error("No database registered for folder $folder")
+        val year = yearFromMillis(photo.dateTakenMillis)
+        return databaseHelpers[helperKey(folder, year)]
+            ?: error("No database registered for $folder:$year")
     }
 
     fun getAllPhotos(context: Context, folderPaths: List<String>, onFinished: suspend () -> Unit) {
-        databaseHelpers = folderPaths.associateWith { DatabaseHelper(context, it) }
         _photos.value = emptyList()
         progress.value = null
 
         coroutineScope.launch {
+            for (folder in folderPaths) {
+                DatabaseHelper.migrateOldDatabase(context, folder)
+            }
+
             val selection = folderPaths.joinToString(" OR ") { "${MediaStore.MediaColumns.DATA} LIKE ?" }
             val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
 
@@ -94,6 +103,14 @@ object PhotoDatabase {
 
             val rawItems = queryMediaStoreItems(context, selection, selectionArgs)
             Log.i("FotoTriage", "MediaStore returned ${rawItems.count { !it.isVideo }} image(s) and ${rawItems.count { it.isVideo }} video(s)")
+
+            val folderYearPairs = rawItems.mapNotNull { item ->
+                val folder = File(item.filePath).parent ?: return@mapNotNull null
+                folder to yearFromMillis(item.dateTakenMillis)
+            }.toSet()
+            databaseHelpers = folderYearPairs.associate { (folder, year) ->
+                helperKey(folder, year) to DatabaseHelper(context, folder, year)
+            }
 
             val dbMaps = databaseHelpers.mapValues { (_, helper) -> helper.loadAllAsMap() }
             val (photoList, newEntriesByFolder) = buildPhotoList(rawItems, dbMaps)
@@ -193,12 +210,14 @@ object PhotoDatabase {
 
         for ((index, item) in rawItems.withIndex()) {
             val folder = File(item.filePath).parent ?: continue
-            if (databaseHelpers[folder] == null) {
+            val year = yearFromMillis(item.dateTakenMillis)
+            val key = helperKey(folder, year)
+            if (databaseHelpers[key] == null) {
                 Log.w("FotoTriage", "No database helper for ${item.filePath}, skipping")
                 continue
             }
-            val (triaged, favorite) = dbMaps[folder]?.get(item.fileName) ?: run {
-                newEntriesByFolder.getOrPut(folder) { mutableListOf() } +=
+            val (triaged, favorite) = dbMaps[key]?.get(item.fileName) ?: run {
+                newEntriesByFolder.getOrPut(key) { mutableListOf() } +=
                     PhotoDataBaseEntry(item.fileName, item.dateTakenMillis, false, false)
                 false to false
             }
@@ -229,11 +248,14 @@ object PhotoDatabase {
     }
 
     private fun cleanUpStaleDatabaseEntries(photoList: List<Photo>) {
-        databaseHelpers.forEach { (folderPath, helper) ->
-            val folderFileNames = photoList
-                .filter { File(it.filePath).parent == folderPath }
-                .map { it.fileName }
-            helper.cleanUpDatabase(folderFileNames)
+        val photosByKey = photoList.groupBy { photo ->
+            val folder = File(photo.filePath).parent ?: return@groupBy ""
+            helperKey(folder, yearFromMillis(photo.dateTakenMillis))
+        }.filterKeys { it.isNotEmpty() }
+
+        databaseHelpers.forEach { (key, helper) ->
+            val fileNames = photosByKey[key]?.map { it.fileName } ?: emptyList()
+            helper.cleanUpDatabase(fileNames)
         }
     }
 

@@ -7,20 +7,21 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import java.io.File
+import java.util.Calendar
 
-class DatabaseHelper(context: Context, folderPath: String) :
-    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+class DatabaseHelper(context: Context, folderPath: String, private val year: Int) :
+    SQLiteOpenHelper(context, "FotoTriage_$year.db", null, DATABASE_VERSION) {
 
     private val databasePath: String = folderPath
+    private val databaseName: String = "FotoTriage_$year.db"
 
     override fun onCreate(db: SQLiteDatabase) {
         val createTable = ("CREATE TABLE $TABLE_NAME ("
                 + "$COLUMN_FILENAME TEXT PRIMARY KEY, "
                 + "$COLUMN_DATA_TAKEN_MILLIS INTEGER, "
                 + "$COLUMN_TRIAGED INTEGER,"
-                + "$COLUMN_FAVORITE INTEGER)") // Store favorite as INTEGER (0 or 1)
+                + "$COLUMN_FAVORITE INTEGER)")
         Log.d("FotoTriage", "DatabaseHelper.onCreate()")
-
         db.execSQL(createTable)
     }
 
@@ -29,17 +30,17 @@ class DatabaseHelper(context: Context, folderPath: String) :
     }
 
     override fun getWritableDatabase(): SQLiteDatabase {
-        val dbFile = File(databasePath, DATABASE_NAME)
-        return SQLiteDatabase.openOrCreateDatabase(dbFile.path, null)
+        val dbFile = File(databasePath, databaseName)
+        val db = SQLiteDatabase.openOrCreateDatabase(dbFile.path, null)
+        db.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(TABLE_NAME))
+            .use { if (it.count == 0) onCreate(db) }
+        return db
     }
 
     override fun getReadableDatabase(): SQLiteDatabase {
-        val dbFile = File(databasePath, DATABASE_NAME)
-        // Check if the database file exists
+        val dbFile = File(databasePath, databaseName)
         if (!dbFile.exists()) {
-            val df = getWritableDatabase()
-            onCreate(df)
-            df.close()
+            getWritableDatabase().close()
         }
         return SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
     }
@@ -51,8 +52,8 @@ class DatabaseHelper(context: Context, folderPath: String) :
         val values = ContentValues().apply {
             put(COLUMN_FILENAME, data.fileName)
             put(COLUMN_DATA_TAKEN_MILLIS, data.dateTakenMillis)
-            put(COLUMN_TRIAGED, if (data.triaged) 1 else 0) // Store boolean as INTEGER
-            put(COLUMN_FAVORITE, if (data.favorite) 1 else 0) // Store boolean as INTEGER
+            put(COLUMN_TRIAGED, if (data.triaged) 1 else 0)
+            put(COLUMN_FAVORITE, if (data.favorite) 1 else 0)
         }
         val result =
             db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_REPLACE)
@@ -122,23 +123,15 @@ class DatabaseHelper(context: Context, folderPath: String) :
     fun cleanUpDatabase(fileList: List<String>) {
         val db = this.writableDatabase
 
-        // Step 1: Retrieve all filenames from the database
-        val query = "SELECT $COLUMN_FILENAME FROM $TABLE_NAME"
-        val cursor = db.rawQuery(query, null)
-
-        // Step 2: Create a set of filenames from the database
+        val cursor = db.rawQuery("SELECT $COLUMN_FILENAME FROM $TABLE_NAME", null)
         val dbFilenames = mutableSetOf<String>()
         while (cursor.moveToNext()) {
-            val filename = cursor.getString(cursor.getColumnIndex(COLUMN_FILENAME))
-            dbFilenames.add(filename)
+            dbFilenames.add(cursor.getString(cursor.getColumnIndex(COLUMN_FILENAME)))
         }
         cursor.close()
 
-        // Step 3: Identify filenames to remove
         val filesToRemove = dbFilenames.filter { !fileList.contains(it) }
-
         Log.w("FotoTriage", "filesToRemove: $filesToRemove")
-        // Step 4: Remove entries from the database
         for (filename in filesToRemove) {
             db.delete(TABLE_NAME, "$COLUMN_FILENAME = ?", arrayOf(filename))
         }
@@ -147,13 +140,53 @@ class DatabaseHelper(context: Context, folderPath: String) :
     }
 
     companion object {
-        private const val DATABASE_NAME = "FotoTriage.db"
         private const val DATABASE_VERSION = 1
         private const val TABLE_NAME = "FotoTriage"
         private const val COLUMN_FILENAME = "filename"
         private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
         private const val COLUMN_TRIAGED = "triaged"
         private const val COLUMN_FAVORITE = "favorite"
+        private const val OLD_DATABASE_NAME = "FotoTriage.db"
+
+        fun migrateOldDatabase(context: Context, folderPath: String) {
+            val oldDbFile = File(folderPath, OLD_DATABASE_NAME)
+            if (!oldDbFile.exists()) return
+
+            Log.i("FotoTriage", "Migrating $oldDbFile to year-specific databases")
+
+            val entriesByYear = mutableMapOf<Int, MutableList<PhotoDataBaseEntry>>()
+            val oldDb = SQLiteDatabase.openDatabase(oldDbFile.path, null, SQLiteDatabase.OPEN_READONLY)
+            try {
+                val cursor = oldDb.rawQuery(
+                    "SELECT $COLUMN_FILENAME, $COLUMN_DATA_TAKEN_MILLIS, $COLUMN_TRIAGED, $COLUMN_FAVORITE FROM $TABLE_NAME",
+                    null
+                )
+                while (cursor.moveToNext()) {
+                    val fileName = cursor.getString(0)
+                    val dateTakenMillis = cursor.getLong(1)
+                    val triaged = cursor.getInt(2) == 1
+                    val favorite = cursor.getInt(3) == 1
+                    val year = if (dateTakenMillis > 0) {
+                        Calendar.getInstance().apply { timeInMillis = dateTakenMillis }.get(Calendar.YEAR)
+                    } else 0
+                    entriesByYear.getOrPut(year) { mutableListOf() } +=
+                        PhotoDataBaseEntry(fileName, dateTakenMillis, triaged, favorite)
+                }
+                cursor.close()
+            } finally {
+                oldDb.close()
+            }
+
+            for ((year, entries) in entriesByYear) {
+                Log.i("FotoTriage", "Migrating ${entries.size} entries to FotoTriage_$year.db in $folderPath")
+                DatabaseHelper(context, folderPath, year).insertBatch(entries)
+            }
+
+            oldDbFile.delete()
+            File(folderPath, "$OLD_DATABASE_NAME-wal").delete()
+            File(folderPath, "$OLD_DATABASE_NAME-shm").delete()
+            Log.i("FotoTriage", "Migration complete for $folderPath")
+        }
     }
 }
 
