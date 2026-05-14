@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
@@ -67,7 +68,13 @@ fun PhotoThumbnailRow(
             val isCurrent = index == currentPage // Check if the index matches the current page
 
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer {
+                    val scale = if (isCurrent) 1.35f else 1f
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = if (isCurrent) 1f else 0.45f
+                }
             )
             {
                 Box(
@@ -75,7 +82,7 @@ fun PhotoThumbnailRow(
                         .padding(horizontal = 1.dp)
                         .border(
                             width = if (isCurrent) 2.dp else 0.dp,
-                            color = if (isCurrent) Color.LightGray else Color.Transparent,
+                            color = if (isCurrent) Color.White else Color.Transparent,
                         )
                         .clickable { onPhotoClicked(index) }
                 ) {
