@@ -1,7 +1,10 @@
 package com.maiso.fototriage.screens.phototriage
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -59,37 +63,52 @@ private fun PhotoPage(photo: Photo) {
                 )
             }
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    val newScale = scale * zoom
-                    val newOffsetX = offsetX + pan.x
-                    val newOffsetY = offsetY + pan.y
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    // Only consume events for multi-touch (zoom) or when already zoomed in (pan).
+                    // Single-touch at scale=1 is intentionally left unconsumed so the pager handles swipes.
+                    var consuming = scale > 1f
+                    do {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.isConsumed }) break
+                        if (event.changes.count { it.pressed } >= 2) consuming = true
+                        if (consuming) {
+                            val zoomChange = event.calculateZoom()
+                            val panChange = event.calculatePan()
+                            val newScale = scale * zoomChange
+                            val newOffsetX = offsetX + panChange.x
+                            val newOffsetY = offsetY + panChange.y
 
-                    val containerWidth = size.width.toFloat()
-                    val containerHeight = size.height.toFloat()
-                    val imageWidth = containerWidth * scale
-                    val imageHeight = containerHeight * scale
+                            val containerWidth = size.width.toFloat()
+                            val containerHeight = size.height.toFloat()
+                            val imageWidth = containerWidth * scale
+                            val imageHeight = containerHeight * scale
 
-                    val minScaleX = containerWidth / imageWidth
-                    val minScaleY = containerHeight / imageHeight
-                    val minScale = minOf(minScaleX, minScaleY)
+                            val minScaleX = containerWidth / imageWidth
+                            val minScaleY = containerHeight / imageHeight
+                            val minScale = minOf(minScaleX, minScaleY)
 
-                    scale = if (newScale < minScale) minScale else newScale
+                            scale = if (newScale < minScale) minScale else newScale
 
-                    val extraWidthRight = (containerWidth - imageWidth) / 2
-                    val extraWidthLeft = (imageWidth - containerWidth) / 2
-                    offsetX = when {
-                        newOffsetX < extraWidthRight -> extraWidthRight
-                        newOffsetX > extraWidthLeft -> extraWidthLeft
-                        else -> newOffsetX
-                    }
+                            val extraWidthRight = (containerWidth - imageWidth) / 2
+                            val extraWidthLeft = (imageWidth - containerWidth) / 2
+                            offsetX = when {
+                                newOffsetX < extraWidthRight -> extraWidthRight
+                                newOffsetX > extraWidthLeft -> extraWidthLeft
+                                else -> newOffsetX
+                            }
 
-                    val extraHeightTop = (containerHeight - imageHeight) / 2
-                    val extraHeightBottom = (imageHeight - containerHeight) / 2
-                    offsetY = when {
-                        newOffsetY < extraHeightTop -> extraHeightTop
-                        newOffsetY > extraHeightBottom -> extraHeightBottom
-                        else -> newOffsetY
-                    }
+                            val extraHeightTop = (containerHeight - imageHeight) / 2
+                            val extraHeightBottom = (imageHeight - containerHeight) / 2
+                            offsetY = when {
+                                newOffsetY < extraHeightTop -> extraHeightTop
+                                newOffsetY > extraHeightBottom -> extraHeightBottom
+                                else -> newOffsetY
+                            }
+
+                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
                 }
             }
             .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offsetX, translationY = offsetY),
