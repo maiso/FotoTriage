@@ -71,6 +71,9 @@ object PhotoDatabase {
 
     val progress = MutableStateFlow<Triple<Int, Int, Int>?>(null)
 
+    private val _deletedByYearMonth = MutableStateFlow<Map<Pair<Int, Int>, Int>>(emptyMap())
+    val deletedByYearMonth: StateFlow<Map<Pair<Int, Int>, Int>> = _deletedByYearMonth.asStateFlow()
+
     private data class RawMediaItem(
         val uri: Uri,
         val fileName: String,
@@ -111,6 +114,15 @@ object PhotoDatabase {
             databaseHelpers = folderYearPairs.associate { (folder, year) ->
                 helperKey(folder, year) to DatabaseHelper(context, folder, year)
             }
+
+            val deletedCounts = mutableMapOf<Pair<Int, Int>, Int>()
+            for ((key, helper) in databaseHelpers) {
+                val year = key.substringAfterLast(":").toInt()
+                helper.getDeletedCounts().forEach { (month, count) ->
+                    deletedCounts[year to month] = (deletedCounts[year to month] ?: 0) + count
+                }
+            }
+            _deletedByYearMonth.value = deletedCounts
 
             val dbMaps = databaseHelpers.mapValues { (_, helper) -> helper.loadAllAsMap() }
             val (photoList, newEntriesByFolder) = buildPhotoList(rawItems, dbMaps)
@@ -325,10 +337,23 @@ object PhotoDatabase {
 
         if (target.exists()) {
             try {
+                val photo = _photos.value.find { it.filePath == path }
+                val photoYear = photo?.let { Calendar.getInstance().apply { timeInMillis = it.dateTakenMillis }.get(Calendar.YEAR) }
+                val photoMonth = photo?.let { Calendar.getInstance().apply { timeInMillis = it.dateTakenMillis }.get(Calendar.MONTH) + 1 }
                 val deleted: Boolean = target.delete()
                 if (deleted) {
                     _photos.update { photos ->
                         photos.filterNot { it.filePath == path }
+                    }
+                    if (photoYear != null && photoMonth != null) {
+                        val folder = File(path).parent
+                        databaseHelpers[helperKey(folder ?: "", photoYear)]?.incrementDeletedCount(photoMonth)
+                        _deletedByYearMonth.update { map ->
+                            map.toMutableMap().also { m ->
+                                val key = photoYear to photoMonth
+                                m[key] = (m[key] ?: 0) + 1
+                            }
+                        }
                     }
                 } else {
                     toast(context, "Failed to delete $fileName")

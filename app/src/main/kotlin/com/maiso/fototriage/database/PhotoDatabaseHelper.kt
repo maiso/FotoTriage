@@ -23,6 +23,7 @@ class DatabaseHelper(context: Context, folderPath: String, private val year: Int
                 + "$COLUMN_FAVORITE INTEGER)")
         Log.d("FotoTriage", "DatabaseHelper.onCreate()")
         db.execSQL(createTable)
+        db.execSQL("CREATE TABLE $METADATA_TABLE (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 0)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -34,14 +35,14 @@ class DatabaseHelper(context: Context, folderPath: String, private val year: Int
         val db = SQLiteDatabase.openOrCreateDatabase(dbFile.path, null)
         db.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(TABLE_NAME))
             .use { if (it.count == 0) onCreate(db) }
+        db.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(METADATA_TABLE))
+            .use { if (it.count == 0) db.execSQL("CREATE TABLE $METADATA_TABLE (key TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 0)") }
         return db
     }
 
     override fun getReadableDatabase(): SQLiteDatabase {
         val dbFile = File(databasePath, databaseName)
-        if (!dbFile.exists()) {
-            getWritableDatabase().close()
-        }
+        getWritableDatabase().close()
         return SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
     }
 
@@ -139,9 +140,33 @@ class DatabaseHelper(context: Context, folderPath: String, private val year: Int
         db.close()
     }
 
+    fun incrementDeletedCount(month: Int) {
+        val key = "deleted_%02d".format(month)
+        val db = writableDatabase
+        db.execSQL(
+            "INSERT INTO $METADATA_TABLE (key, value) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET value = value + 1",
+            arrayOf(key)
+        )
+        db.close()
+    }
+
+    fun getDeletedCounts(): Map<Int, Int> {
+        val db = readableDatabase
+        val map = mutableMapOf<Int, Int>()
+        db.rawQuery("SELECT key, value FROM $METADATA_TABLE WHERE key LIKE 'deleted_%'", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val month = cursor.getString(0).removePrefix("deleted_").toIntOrNull() ?: continue
+                map[month] = cursor.getInt(1)
+            }
+        }
+        db.close()
+        return map
+    }
+
     companion object {
         private const val DATABASE_VERSION = 1
         private const val TABLE_NAME = "FotoTriage"
+        private const val METADATA_TABLE = "metadata"
         private const val COLUMN_FILENAME = "filename"
         private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
         private const val COLUMN_TRIAGED = "triaged"
