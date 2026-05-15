@@ -182,7 +182,7 @@ class DatabaseHelper(context: Context, folderPath: String, private val year: Int
                 DatabaseHelper(context, folderPath, year).insertBatch(entries)
             }
 
-            oldDbFile.delete()
+            oldDbFile.renameTo(File(folderPath, "${OLD_DATABASE_NAME.removeSuffix(".db")}_old.db"))
             File(folderPath, "$OLD_DATABASE_NAME-wal").delete()
             File(folderPath, "$OLD_DATABASE_NAME-shm").delete()
             Log.i("FotoTriage", "Migration complete for $folderPath")
