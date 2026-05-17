@@ -5,6 +5,7 @@ import androidx.core.content.edit
 
 private const val PREFS_NAME = "FotoTriagePrefs"
 private const val KEY_SELECTED_FOLDERS = "selected_folders"
+private const val KEY_DELETE_WARNING_DISMISSED = "delete_warning_dismissed"
 
 object FolderPreferences {
 
@@ -22,4 +23,13 @@ object FolderPreferences {
     }
 
     fun hasSavedFolders(context: Context): Boolean = getSelectedFolders(context).isNotEmpty()
+
+    fun isDeleteWarningDismissed(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_DELETE_WARNING_DISMISSED, false)
+
+    fun setDeleteWarningDismissed(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { putBoolean(KEY_DELETE_WARNING_DISMISSED, true) }
+    }
 }

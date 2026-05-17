@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 
 
 @Composable
@@ -49,7 +51,7 @@ fun TriagedPill() {
     Pill(
         color = Color.Green.copy(alpha = 0.4f),
         imageVector = Icons.Filled.Check,
-        text = "Triaged",
+        text = stringResource(R.string.pill_triaged),
     )
 }
 
@@ -58,6 +60,6 @@ fun FavoritePill() {
     Pill(
         color = Color.Magenta.copy(alpha = 0.4f),
         imageVector = Icons.Outlined.Favorite,
-        text = "Favoriet",
+        text = stringResource(R.string.pill_favorite),
     )
 }

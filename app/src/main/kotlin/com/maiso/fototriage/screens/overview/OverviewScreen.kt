@@ -36,9 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import java.time.Month
 import java.time.Year
@@ -73,7 +75,7 @@ fun OverviewScreen(
                     IconButton(onClick = { menuExpanded = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
+                            contentDescription = stringResource(R.string.cd_more_options),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -82,7 +84,7 @@ fun OverviewScreen(
                         onDismissRequest = { menuExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Voltooide maanden tonen") },
+                            text = { Text(stringResource(R.string.menu_show_completed_months)) },
                             leadingIcon = {
                                 Checkbox(
                                     checked = showCompleted,
@@ -92,7 +94,7 @@ fun OverviewScreen(
                             onClick = { showCompleted = !showCompleted },
                         )
                         DropdownMenuItem(
-                            text = { Text("Mappen selecteren") },
+                            text = { Text(stringResource(R.string.menu_select_folders)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Filled.Settings,
@@ -125,7 +127,7 @@ fun OverviewScreen(
             if (monthsForYear.isEmpty()) {
                 item {
                     Text(
-                        text = "Alle maanden voltooid",
+                        text = stringResource(R.string.text_all_months_completed),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 20.dp, top = 6.dp, bottom = 6.dp),
@@ -207,12 +209,12 @@ private fun YearRow(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = "Klaar",
+                        contentDescription = stringResource(R.string.cd_done),
                         tint = ColorDone,
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
-                        text = "Klaar",
+                        text = stringResource(R.string.text_done),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Medium,
                         color = ColorDone,
@@ -224,7 +226,7 @@ private fun YearRow(
                     color = primaryContainer,
                 ) {
                     Text(
-                        text = "${yearUiState.nrOfUntriaged} te doen",
+                        text = stringResource(R.string.text_todo_count, yearUiState.nrOfUntriaged),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,

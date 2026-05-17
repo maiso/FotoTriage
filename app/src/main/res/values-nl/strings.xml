@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Loading -->
+    <string name="loading_title">FotoTriage</string>
+    <string name="loading_progress">%1$d van %2$d fotos</string>
+    <string name="loading_indeterminate">Fotos laden…</string>
+
+    <!-- Overview -->
+    <string name="menu_show_completed_months">Voltooide maanden tonen</string>
+    <string name="menu_select_folders">Mappen selecteren</string>
+    <string name="text_all_months_completed">Alle maanden voltooid</string>
+    <string name="text_done">Klaar</string>
+    <string name="cd_done">Klaar</string>
+    <string name="text_todo_count">%d te doen</string>
+
+    <!-- Photo triage header -->
+    <string name="cd_back">Terug</string>
+    <string name="cd_more_options">Meer opties</string>
+    <string name="cd_share">Delen</string>
+    <string name="menu_show_triaged">Getriagede fotos tonen</string>
+
+    <!-- Pills -->
+    <string name="pill_triaged">Getriaged</string>
+    <string name="pill_favorite">Favoriet</string>
+
+    <!-- Delete dialog -->
+    <string name="dialog_delete_title">Foto verwijderen</string>
+    <string name="dialog_delete_message">Weet je zeker dat je deze foto permanent wilt verwijderen? Dit kan niet ongedaan worden gemaakt.</string>
+    <string name="checkbox_dont_ask_again">Niet meer vragen</string>
+    <string name="btn_delete">Verwijderen</string>
+    <string name="btn_cancel">Annuleren</string>
+
+    <!-- Triage finished -->
+    <string name="text_congratulations">Gefeliciteerd!</string>
+    <string name="text_month_done">%1$s %2$s is klaar</string>
+    <string name="text_full_year">Heel %s</string>
+    <string name="btn_show_all_photos">Alle fotos %1$s %2$s</string>
+    <string name="btn_close">Sluiten</string>
+    <string name="stat_triaged">Getriaged</string>
+    <string name="stat_favorites">Favorieten</string>
+    <string name="stat_deleted">Verwijderd</string>
+
+    <!-- Favourite overview -->
+    <string name="text_no_favorites">Geen favorite foto\'s</string>
+    <string name="menu_export_to_usb">Exporteer foto\'s naar Usb-Stick</string>
+
+    <!-- Folder selection -->
+    <string name="title_select_folders">Selecteer mappen</string>
+    <string name="text_no_photos_found">Geen foto\'s gevonden</string>
+    <string name="text_no_image_folders">Er zijn geen afbeeldingsmappen gevonden op dit apparaat.</string>
+    <string name="btn_continue">Doorgaan</string>
+
+    <!-- Export -->
+    <string name="export_complete">Export klaar.</string>
+    <string name="exporting">Exporteren…</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">FotoTriage Maandelijkse Meldingen</string>
+    <string name="notification_channel_description">Kanaal voor maandelijkse meldingen</string>
+    <string name="notification_title">Foto Triage herinnering</string>
+    <string name="notification_text">Je hebt nog foto\'s om te triageren!</string>
+
+    <!-- Toasts -->
+    <string name="toast_permission_denied">Toestemming niet verleend</string>
+    <string name="toast_error">Er is iets misgegaan</string>
+
+    <!-- Plurals -->
+    <plurals name="photos_remaining">
+        <item quantity="one">%d foto te gaan</item>
+        <item quantity="other">%d fotos te gaan</item>
+    </plurals>
+</resources>

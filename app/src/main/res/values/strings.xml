@@ -1,3 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FotoTriage</string>
+
+    <!-- Loading -->
+    <string name="loading_title">FotoTriage</string>
+    <string name="loading_progress">%1$d of %2$d photos</string>
+    <string name="loading_indeterminate">Loading photos…</string>
+
+    <!-- Overview -->
+    <string name="menu_show_completed_months">Show completed months</string>
+    <string name="menu_select_folders">Select folders</string>
+    <string name="text_all_months_completed">All months completed</string>
+    <string name="text_done">Done</string>
+    <string name="cd_done">Done</string>
+    <string name="text_todo_count">%d to do</string>
+
+    <!-- Photo triage header -->
+    <string name="cd_back">Back</string>
+    <string name="cd_more_options">More options</string>
+    <string name="cd_share">Share</string>
+    <string name="menu_show_triaged">Show triaged</string>
+
+    <!-- Pills -->
+    <string name="pill_triaged">Triaged</string>
+    <string name="pill_favorite">Favourite</string>
+
+    <!-- Delete dialog -->
+    <string name="dialog_delete_title">Delete photo</string>
+    <string name="dialog_delete_message">Are you sure you want to permanently delete this photo? This cannot be undone.</string>
+    <string name="checkbox_dont_ask_again">Don\'t ask again</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_cancel">Cancel</string>
+
+    <!-- Triage finished -->
+    <string name="text_congratulations">Congratulations!</string>
+    <string name="text_month_done">%1$s %2$s is done</string>
+    <string name="text_full_year">Full year %s</string>
+    <string name="btn_show_all_photos">All photos %1$s %2$s</string>
+    <string name="btn_close">Close</string>
+    <string name="stat_triaged">Triaged</string>
+    <string name="stat_favorites">Favourites</string>
+    <string name="stat_deleted">Deleted</string>
+
+    <!-- Favourite overview -->
+    <string name="text_no_favorites">No favourite photos</string>
+    <string name="menu_export_to_usb">Export photos to USB drive</string>
+
+    <!-- Folder selection -->
+    <string name="title_select_folders">Select folders to index</string>
+    <string name="text_no_photos_found">No photos found</string>
+    <string name="text_no_image_folders">No image folders were found on this device.</string>
+    <string name="btn_continue">Continue</string>
+
+    <!-- Export -->
+    <string name="export_complete">Export done.</string>
+    <string name="exporting">Exporting…</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">FotoTriage Monthly Notifications</string>
+    <string name="notification_channel_description">Channel for monthly notifications</string>
+    <string name="notification_title">FotoTriage reminder</string>
+    <string name="notification_text">You still have photos to triage!</string>
+
+    <!-- Toasts -->
+    <string name="toast_permission_denied">Permission not granted</string>
+    <string name="toast_error">Something went wrong</string>
+
+    <!-- Plurals -->
+    <plurals name="photos_remaining">
+        <item quantity="one">%d photo to go</item>
+        <item quantity="other">%d photos to go</item>
+    </plurals>
 </resources>

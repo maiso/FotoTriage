@@ -1,6 +1,7 @@
 package com.maiso.fototriage
 
 import android.Manifest
+import com.maiso.fototriage.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
             if (Environment.isExternalStorageManager()) {
                 Log.i("FotoTriage", "Manage all files permission granted")
             } else {
-                Toast.makeText(applicationContext, "Permission not granted", Toast.LENGTH_LONG)
+                Toast.makeText(applicationContext, getString(R.string.toast_permission_denied), Toast.LENGTH_LONG)
                     .show()
             }
         }
@@ -136,7 +137,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         Toast.makeText(
                             applicationContext,
-                            "Something went wrong",
+                            getString(R.string.toast_error),
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -364,8 +365,8 @@ class MainActivity : ComponentActivity() {
 
     private fun createNotificationChannel() {
         val channelId = "fototriage_monthly_notification_channel"
-        val channelName = "FotoTriage Monthly Notifications"
-        val channelDescription = "Channel for monthly notifications"
+        val channelName = getString(R.string.notification_channel_name)
+        val channelDescription = getString(R.string.notification_channel_description)
         val importance = NotificationManager.IMPORTANCE_DEFAULT
 
         val channel = NotificationChannel(channelId, channelName, importance).apply {

@@ -38,8 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import androidx.core.net.toUri
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
@@ -80,7 +83,7 @@ fun PhotoTriage(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Back to overview",
+                        contentDescription = stringResource(R.string.cd_back),
                         tint = Color.Gray,
                     )
                 }
@@ -104,7 +107,7 @@ fun PhotoTriage(
                         )
                         val remaining = uiState.photos.size - pagerState.currentPage
                         Text(
-                            text = "$remaining ${if (remaining == 1) "foto" else "fotos"} te gaan",
+                            text = pluralStringResource(R.plurals.photos_remaining, remaining, remaining),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray.copy(alpha = 0.6f),
                         )
@@ -125,7 +128,7 @@ fun PhotoTriage(
                     }) {
                         Icon(
                             imageVector = Icons.Filled.Share,
-                            contentDescription = "Share",
+                            contentDescription = stringResource(R.string.cd_share),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -135,7 +138,7 @@ fun PhotoTriage(
                     IconButton(onClick = { menuExpanded = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
+                            contentDescription = stringResource(R.string.cd_more_options),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -144,7 +147,7 @@ fun PhotoTriage(
                         onDismissRequest = { menuExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Show triaged") },
+                            text = { Text(stringResource(R.string.menu_show_triaged)) },
                             leadingIcon = {
                                 Checkbox(
                                     checked = uiState.showTriaged,

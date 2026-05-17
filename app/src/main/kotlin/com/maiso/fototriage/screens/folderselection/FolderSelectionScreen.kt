@@ -25,8 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import java.io.File
 
@@ -55,12 +57,12 @@ fun FolderSelectionScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Terug",
+                            contentDescription = stringResource(R.string.cd_back),
                         )
                     }
                 }
                 Text(
-                    text = "Select folders to index",
+                    text = stringResource(R.string.title_select_folders),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f),
                 )
@@ -79,12 +81,12 @@ fun FolderSelectionScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = "No photos found",
+                        text = stringResource(R.string.text_no_photos_found),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "No image folders were found on this device.",
+                        text = stringResource(R.string.text_no_image_folders),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -129,7 +131,7 @@ fun FolderSelectionScreen(
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
-                Text("Continue")
+                Text(stringResource(R.string.btn_continue))
             }
         }
     }

@@ -35,8 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import coil3.compose.AsyncImage
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
@@ -63,7 +65,7 @@ fun FavoriteOverviewScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back to overview",
+                    contentDescription = stringResource(R.string.cd_back),
                 )
             }
             Box(modifier = Modifier.weight(1f))
@@ -71,7 +73,7 @@ fun FavoriteOverviewScreen(
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More options",
+                        contentDescription = stringResource(R.string.cd_more_options),
                     )
                 }
                 DropdownMenu(
@@ -79,7 +81,7 @@ fun FavoriteOverviewScreen(
                     onDismissRequest = { menuExpanded = false },
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Exporteer foto's naar Usb-Stick") },
+                        text = { Text(stringResource(R.string.menu_export_to_usb)) },
                         enabled = uiState.photos.isNotEmpty(),
                         onClick = {
                             openExportPanel()
@@ -93,7 +95,7 @@ fun FavoriteOverviewScreen(
             Box(
                 contentAlignment = Alignment.Center
             ) {
-                Text("Geen favorite foto's")
+                Text(stringResource(R.string.text_no_favorites))
             }
         } else {
             LazyVerticalGrid(

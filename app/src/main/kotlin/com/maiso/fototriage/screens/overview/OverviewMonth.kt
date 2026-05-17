@@ -24,8 +24,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import java.time.Month
 import java.time.format.TextStyle
@@ -84,7 +86,7 @@ fun MonthRow(
         if (done) {
             Icon(
                 imageVector = Icons.Outlined.CheckCircle,
-                contentDescription = "Klaar",
+                contentDescription = stringResource(R.string.cd_done),
                 tint = ColorDone,
                 modifier = Modifier.size(22.dp),
             )

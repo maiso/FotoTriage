@@ -29,7 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.maiso.fototriage.R
 import com.maiso.fototriage.composables.LongPressButton
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.preferences.FolderPreferences
@@ -56,10 +58,10 @@ fun ButtonsRow(
                 pendingDelete = null
                 dontAskAgain = false
             },
-            title = { Text("Foto verwijderen") },
+            title = { Text(stringResource(R.string.dialog_delete_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Weet je zeker dat je deze foto permanent wilt verwijderen? Dit kan niet ongedaan worden gemaakt.")
+                    Text(stringResource(R.string.dialog_delete_message))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { dontAskAgain = !dontAskAgain },
@@ -68,7 +70,7 @@ fun ButtonsRow(
                             checked = dontAskAgain,
                             onCheckedChange = { dontAskAgain = it },
                         )
-                        Text("Niet meer vragen")
+                        Text(stringResource(R.string.checkbox_dont_ask_again))
                     }
                 }
             },
@@ -79,7 +81,7 @@ fun ButtonsRow(
                     pendingDelete = null
                     dontAskAgain = false
                 }) {
-                    Text("Verwijderen", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -87,7 +89,7 @@ fun ButtonsRow(
                     pendingDelete = null
                     dontAskAgain = false
                 }) {
-                    Text("Annuleren")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             },
         )

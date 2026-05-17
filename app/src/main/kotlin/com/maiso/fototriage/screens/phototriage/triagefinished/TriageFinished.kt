@@ -29,10 +29,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.maiso.fototriage.R
 import com.maiso.fototriage.database.PhotoDatabase
 import com.maiso.fototriage.database.filterByMonth
 import com.maiso.fototriage.database.filterByYear
@@ -75,14 +77,14 @@ fun TriageFinished(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Gefeliciteerd!",
+            text = stringResource(R.string.text_congratulations),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "${month.toDutchString()} $year is klaar",
+            text = stringResource(R.string.text_month_done, month.toDutchString(), year),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -99,7 +101,7 @@ fun TriageFinished(
         Spacer(Modifier.height(16.dp))
 
         StatsCard(
-            title = "Heel $year",
+            title = stringResource(R.string.text_full_year, year),
             triaged = yearPhotos.count { it.triaged && !it.favorite },
             favorites = yearPhotos.count { it.favorite },
             deleted = yearDeleted,
@@ -115,14 +117,14 @@ fun TriageFinished(
                 contentColor = MaterialTheme.colorScheme.onSecondary
             )
         ) {
-            Text(text = "Alle fotos ${month.toDutchString()} $year")
+            Text(text = stringResource(R.string.btn_show_all_photos, month.toDutchString(), year))
         }
 
         Button(
             onClick = { onClosePanel() },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(text = "Sluiten")
+            Text(text = stringResource(R.string.btn_close))
         }
     }
 }
@@ -143,11 +145,11 @@ private fun StatsCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(12.dp))
-            StatRow(icon = Icons.Outlined.CheckCircle, label = "Getriaged", count = triaged)
+            StatRow(icon = Icons.Outlined.CheckCircle, label = stringResource(R.string.stat_triaged), count = triaged)
             Spacer(Modifier.height(6.dp))
-            StatRow(icon = Icons.Outlined.Favorite, label = "Favorieten", count = favorites)
+            StatRow(icon = Icons.Outlined.Favorite, label = stringResource(R.string.stat_favorites), count = favorites)
             Spacer(Modifier.height(6.dp))
-            StatRow(icon = Icons.Filled.Delete, label = "Verwijderd", count = deleted)
+            StatRow(icon = Icons.Filled.Delete, label = stringResource(R.string.stat_deleted), count = deleted)
         }
     }
 }
