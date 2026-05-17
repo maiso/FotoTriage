@@ -54,8 +54,8 @@ fun VideoPlayer(
         }
     }
 
-    var isPlaying by remember { mutableStateOf(true) }
-    var playbackEnded by remember { mutableStateOf(false) }
+    var isPlaying by remember(uri) { mutableStateOf(false) }
+    var playbackEnded by remember(uri) { mutableStateOf(false) }
 
     DisposableEffect(uri) {
         val listener = object : Player.Listener {
@@ -73,7 +73,7 @@ fun VideoPlayer(
         }
     }
 
-    LaunchedEffect(isCurrentPage) {
+    LaunchedEffect(isCurrentPage, uri) {
         if (isCurrentPage) {
             if (!playbackEnded) player.play()
         } else {
@@ -86,6 +86,7 @@ fun VideoPlayer(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter,
         ) {
             AndroidView(
                 factory = { ctx ->

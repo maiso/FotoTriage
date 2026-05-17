@@ -2,6 +2,8 @@ package com.maiso.fototriage.screens.phototriage
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,16 +11,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +41,7 @@ import androidx.core.net.toUri
 import com.maiso.fototriage.database.Photo
 import com.maiso.fototriage.ui.theme.FotoTriageTheme
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Date
 
 @Composable
@@ -40,7 +54,8 @@ fun PhotoTriage(
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope() // Coroutine scope for scrolling
+    val coroutineScope = rememberCoroutineScope()
+    var menuExpanded by remember { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(0) { uiState.photos.size }
 
@@ -66,35 +81,61 @@ fun PhotoTriage(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
                 if (uiState.photos.isNotEmpty() && pagerState.currentPage in uiState.photos.indices) {
-                    Text(
-                        text = uiState.photos[pagerState.currentPage].fileName,
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
-                    )
+                    val photo = uiState.photos[pagerState.currentPage]
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = photo.fileName,
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        StartEllipsisText(
+                            text = File(photo.filePath).parent ?: photo.filePath,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray.copy(alpha = 0.6f),
+                        )
+                        val remaining = uiState.photos.size - pagerState.currentPage
+                        Text(
+                            text = "$remaining ${if (remaining == 1) "foto" else "fotos"} te gaan",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray.copy(alpha = 0.6f),
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Existing Text with secondary style
-                Text(
-                    text = "Show triaged",
-                    modifier = Modifier.padding(end = 8.dp),
-                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray) // Secondary text style
-                )
-
-                // Switch with less prominent color
-                Switch(
-                    checked = uiState.showTriaged,
-                    onCheckedChange = { onShowTriagedChange(it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.Gray, // Less prominent color for checked state
-                        uncheckedThumbColor = Color.DarkGray, // Less prominent color for unchecked state
-                        checkedTrackColor = Color.LightGray, // Less prominent color for track when checked
-                        uncheckedTrackColor = Color.Gray // Less prominent color for track when unchecked
-                    )
-                )
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Show triaged") },
+                            leadingIcon = {
+                                Checkbox(
+                                    checked = uiState.showTriaged,
+                                    onCheckedChange = null,
+                                )
+                            },
+                            onClick = {
+                                onShowTriagedChange(!uiState.showTriaged)
+                                menuExpanded = false
+                            },
+                        )
+                    }
+                }
             }
         }
         PhotoPager(
@@ -145,5 +186,36 @@ fun PhotoTriagePreview() {
                 ),
                 true
             ), {}, {}, {}, {})
+    }
+}
+
+@Composable
+private fun StartEllipsisText(text: String, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
+    val textMeasurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier = modifier) {
+        val maxWidthPx = constraints.maxWidth
+        val displayText = remember(text, maxWidthPx, style) {
+            val full = textMeasurer.measure(
+                AnnotatedString(text), style = style, maxLines = 1,
+                constraints = Constraints(maxWidth = maxWidthPx),
+            )
+            if (!full.hasVisualOverflow) {
+                text
+            } else {
+                // Binary search for the smallest start index where "…<suffix>" fits.
+                var lo = 0; var hi = text.length
+                while (lo < hi) {
+                    val mid = (lo + hi) / 2
+                    val candidate = "…" + text.substring(mid)
+                    val r = textMeasurer.measure(
+                        AnnotatedString(candidate), style = style, maxLines = 1,
+                        constraints = Constraints(maxWidth = maxWidthPx),
+                    )
+                    if (r.hasVisualOverflow) lo = mid + 1 else hi = mid
+                }
+                "…" + text.substring(lo)
+            }
+        }
+        Text(text = displayText, style = style, color = color, maxLines = 1)
     }
 }
