@@ -1,11 +1,8 @@
 package com.maiso.fototriage
 
 import android.Manifest
-import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -55,7 +52,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Month
 import java.time.Year
-import java.util.Calendar
 
 sealed interface Dest {
     data object FolderSelectionScreen
@@ -127,8 +123,8 @@ class MainActivity : ComponentActivity() {
         }
 
         createNotificationChannel()
-        if (!isNotificationScheduled(this)) {
-            scheduleMonthlyNotification(this)
+        if (!NotificationReceiver.isScheduled(this)) {
+            NotificationReceiver.schedule(this)
         }
 
         usbDirectoryPickerLauncher =
@@ -356,6 +352,9 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_MEDIA_VIDEO.takeIf {
                 ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
             },
+            Manifest.permission.POST_NOTIFICATIONS.takeIf {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            },
         )
         if (toRequest.isNotEmpty()) requestPermissionsLauncher.launch(toRequest.toTypedArray())
     }
@@ -372,45 +371,6 @@ class MainActivity : ComponentActivity() {
 
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
-    }
-
-    private fun scheduleMonthlyNotification(context: Context) {
-        val alarmManager = context.getSystemService(ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, NotificationReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 9)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            if (timeInMillis < System.currentTimeMillis()) {
-                add(Calendar.MONTH, 1)
-            }
-        }
-
-        alarmManager.setInexactRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY * 30,
-            pendingIntent
-        )
-    }
-
-    private fun isNotificationScheduled(context: Context): Boolean {
-        val intent = Intent(context, NotificationReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-        )
-        return pendingIntent != null
     }
 
     companion object {
