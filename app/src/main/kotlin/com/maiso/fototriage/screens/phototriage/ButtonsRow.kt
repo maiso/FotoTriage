@@ -31,6 +31,10 @@ fun ButtonsRow(
     onTriagedPhoto: (photo: Photo) -> Unit,
     onFavoritePhoto: (photo: Photo) -> Unit,
 ) {
+    val currentPhoto = photos[currentPage]
+    val isFavorite = currentPhoto.favorite
+    val isTriaged = currentPhoto.triaged && !currentPhoto.favorite
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -39,7 +43,7 @@ fun ButtonsRow(
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         LongPressButton(
-            onLongPress = { onDeletePhoto(photos[currentPage]) },
+            onLongPress = { onDeletePhoto(currentPhoto) },
             modifier = Modifier
                 .weight(1f)
                 .height(100.dp)
@@ -70,10 +74,8 @@ fun ButtonsRow(
             modifier = Modifier
                 .weight(1f)
                 .height(100.dp)
-                .clickable {
-                    onFavoritePhoto(photos[currentPage])
-                }
-                .background(Color.Magenta.copy(alpha = 0.4f), shape = CircleShape),
+                .clickable { onFavoritePhoto(currentPhoto) }
+                .background(Color.Magenta.copy(alpha = if (isFavorite) 1f else 0.4f), shape = CircleShape),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -94,10 +96,8 @@ fun ButtonsRow(
             modifier = Modifier
                 .weight(1f)
                 .height(100.dp)
-                .clickable {
-                    onTriagedPhoto(photos[currentPage])
-                }
-                .background(Color.Green.copy(alpha = 0.4f), shape = CircleShape),
+                .clickable { onTriagedPhoto(currentPhoto) }
+                .background(Color.Green.copy(alpha = if (isTriaged) 1f else 0.4f), shape = CircleShape),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
