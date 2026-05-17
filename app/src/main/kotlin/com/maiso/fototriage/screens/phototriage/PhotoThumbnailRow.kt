@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -57,12 +58,17 @@ fun PhotoThumbnailRow(
         )
     }
 
+    // graphicsLayer scale (1.35x) overflows layout bounds without changing them.
+    // contentPadding reserves that overhang so the first/last item isn't clipped.
+    val scaleOverhang = smallImageSize * 0.18f + 2.dp
+
     LazyRow(
-        state = listState, // Use the LazyListState
+        state = listState,
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
-        horizontalArrangement = Arrangement.Center // Center the items in the row
+        contentPadding = PaddingValues(horizontal = scaleOverhang),
+        horizontalArrangement = Arrangement.Center
     ) {
         itemsIndexed(photos) { index, photo ->
             val isCurrent = index == currentPage // Check if the index matches the current page
