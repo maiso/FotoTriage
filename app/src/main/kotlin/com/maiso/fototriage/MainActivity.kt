@@ -179,6 +179,9 @@ class MainActivity : ComponentActivity() {
                                 FolderSelectionScreen(
                                     uiState = uiState,
                                     onToggle = folderSelectionViewModel::toggle,
+                                    onBack = if (backStack.size > 1) {
+                                        { backStack.removeLastOrNull() }
+                                    } else null,
                                     onContinue = {
                                         folderSelectionViewModel.saveSelection()
                                         val folders = FolderPreferences.getSelectedFolders(applicationContext)
