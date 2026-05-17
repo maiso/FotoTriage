@@ -7,7 +7,6 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import java.io.File
-import java.util.Calendar
 
 class DatabaseHelper(context: Context, folderPath: String, private val year: Int) :
     SQLiteOpenHelper(context, "FotoTriage_$year.db", null, DATABASE_VERSION) {
@@ -171,47 +170,6 @@ class DatabaseHelper(context: Context, folderPath: String, private val year: Int
         private const val COLUMN_DATA_TAKEN_MILLIS = "data_taken_millis"
         private const val COLUMN_TRIAGED = "triaged"
         private const val COLUMN_FAVORITE = "favorite"
-        private const val OLD_DATABASE_NAME = "FotoTriage.db"
-
-        fun migrateOldDatabase(context: Context, folderPath: String) {
-            val oldDbFile = File(folderPath, OLD_DATABASE_NAME)
-            if (!oldDbFile.exists()) return
-
-            Log.i("FotoTriage", "Migrating $oldDbFile to year-specific databases")
-
-            val entriesByYear = mutableMapOf<Int, MutableList<PhotoDataBaseEntry>>()
-            val oldDb = SQLiteDatabase.openDatabase(oldDbFile.path, null, SQLiteDatabase.OPEN_READONLY)
-            try {
-                val cursor = oldDb.rawQuery(
-                    "SELECT $COLUMN_FILENAME, $COLUMN_DATA_TAKEN_MILLIS, $COLUMN_TRIAGED, $COLUMN_FAVORITE FROM $TABLE_NAME",
-                    null
-                )
-                while (cursor.moveToNext()) {
-                    val fileName = cursor.getString(0)
-                    val dateTakenMillis = cursor.getLong(1)
-                    val triaged = cursor.getInt(2) == 1
-                    val favorite = cursor.getInt(3) == 1
-                    val year = if (dateTakenMillis > 0) {
-                        Calendar.getInstance().apply { timeInMillis = dateTakenMillis }.get(Calendar.YEAR)
-                    } else 0
-                    entriesByYear.getOrPut(year) { mutableListOf() } +=
-                        PhotoDataBaseEntry(fileName, dateTakenMillis, triaged, favorite)
-                }
-                cursor.close()
-            } finally {
-                oldDb.close()
-            }
-
-            for ((year, entries) in entriesByYear) {
-                Log.i("FotoTriage", "Migrating ${entries.size} entries to FotoTriage_$year.db in $folderPath")
-                DatabaseHelper(context, folderPath, year).insertBatch(entries)
-            }
-
-            oldDbFile.renameTo(File(folderPath, "${OLD_DATABASE_NAME.removeSuffix(".db")}_old.db"))
-            File(folderPath, "$OLD_DATABASE_NAME-wal").delete()
-            File(folderPath, "$OLD_DATABASE_NAME-shm").delete()
-            Log.i("FotoTriage", "Migration complete for $folderPath")
-        }
     }
 }
 

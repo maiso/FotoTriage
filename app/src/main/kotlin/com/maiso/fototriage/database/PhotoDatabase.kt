@@ -95,10 +95,6 @@ object PhotoDatabase {
         progress.value = null
 
         coroutineScope.launch {
-            for (folder in folderPaths) {
-                DatabaseHelper.migrateOldDatabase(context, folder)
-            }
-
             val selection = folderPaths.joinToString(" OR ") { "${MediaStore.MediaColumns.DATA} LIKE ?" }
             val selectionArgs = folderPaths.map { "$it/%" }.toTypedArray()
 
