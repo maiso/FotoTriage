@@ -53,8 +53,9 @@
     <string name="btn_continue">Continue</string>
 
     <!-- Export -->
-    <string name="export_complete">Export done.</string>
+    <string name="export_complete">Export complete</string>
     <string name="exporting">Exporting…</string>
+    <string name="export_progress">%1$d of %2$d photos</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">FotoTriage Monthly Notifications</string>

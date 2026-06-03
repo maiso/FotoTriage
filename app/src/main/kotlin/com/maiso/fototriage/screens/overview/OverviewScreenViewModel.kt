@@ -19,6 +19,7 @@ import java.time.Year
 data class OverviewScreenUiState(
     val yearPhotos: List<YearUiState> = emptyList(),
     val monthPhotos: List<MonthUiState> = emptyList(),
+    val showCompleted: Boolean = false,
 )
 
 data class YearUiState(
@@ -45,7 +46,7 @@ class OverviewScreenViewModel : ViewModel() {
     init {
 
         PhotoDatabase.photos.onEach { photos ->
-            uiState.value = OverviewScreenUiState()
+            uiState.value = OverviewScreenUiState(showCompleted = uiState.value.showCompleted)
 
             photos.findUniqueYears().forEach { year ->
                 val photosOfTheYear = photos.filterByYear(year)
@@ -95,6 +96,10 @@ class OverviewScreenViewModel : ViewModel() {
                 }
             }
         }.launchIn(viewModelScope)
+    }
+
+    fun toggleShowCompleted() {
+        uiState.update { it.copy(showCompleted = !it.showCompleted) }
     }
 
     companion object {

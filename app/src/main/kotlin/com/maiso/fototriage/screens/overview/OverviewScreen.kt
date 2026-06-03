@@ -54,8 +54,9 @@ fun OverviewScreen(
     onYearClick: (Year) -> Unit,
     onMonthClick: (Year, Month) -> Unit,
     onSettingsClick: () -> Unit = {},
+    onToggleShowCompleted: () -> Unit = {},
 ) {
-    var showCompleted by remember { mutableStateOf(false) }
+    val showCompleted = uiState.showCompleted
     var menuExpanded by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -91,7 +92,7 @@ fun OverviewScreen(
                                     onCheckedChange = null,
                                 )
                             },
-                            onClick = { showCompleted = !showCompleted },
+                            onClick = { onToggleShowCompleted() },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.menu_select_folders)) },

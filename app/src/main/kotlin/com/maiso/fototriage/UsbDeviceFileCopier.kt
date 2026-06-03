@@ -54,7 +54,7 @@ class USBFileCopier(private val context: Context) {
                     CopyProgress(
                         photos.size,
                         currentPhotoIndex,
-                        ((currentPhotoIndex / 100) * photos.size)
+                        (currentPhotoIndex * 100) / photos.size
                     )
                 }
             }

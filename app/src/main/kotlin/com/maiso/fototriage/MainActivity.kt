@@ -230,6 +230,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onSettingsClick = {
                                         backStack.add(Dest.FolderSelectionScreen)
+                                    },
+                                    onToggleShowCompleted = {
+                                        overviewScreenViewModel.toggleShowCompleted()
                                     }
                                 )
                             }

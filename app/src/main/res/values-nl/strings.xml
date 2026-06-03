@@ -51,8 +51,9 @@
     <string name="btn_continue">Doorgaan</string>
 
     <!-- Export -->
-    <string name="export_complete">Export klaar.</string>
+    <string name="export_complete">Export voltooid</string>
     <string name="exporting">Exporteren…</string>
+    <string name="export_progress">%1$d van %2$d fotos</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">FotoTriage Maandelijkse Meldingen</string>
